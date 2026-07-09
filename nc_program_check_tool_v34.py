@@ -54,6 +54,11 @@ ALERT_COLOR = "#FB5E7E"
 INFO_COLOR = "#6CB6FF"
 VIOLET_COLOR = "#C08CFF"
 
+# v35 secbar（各ペイン見出し帯）用の配色。BG_HEADERと同系のネイビーバー。
+BAR_LO = "#153A5A"
+BAR_INK = "#CFE6F7"
+BAR_EN = "#7FB2D9"
+
 # シンタックスハイライト色（TC Suite調 — ネイビー地に映えるHUD配色）
 SYNTAX_COLORS: list[tuple[str, str, str]] = [
     # (タグ名, 正規表現, 文字色)
@@ -1279,87 +1284,98 @@ class NcCheckApp:
             self._load_file_from_path(path)
 
     def _make_action_button(self, master: tk.Misc, text: str, command, primary: bool = False) -> tk.Button:
-        bg = ACCENT if primary else "#141B24"
-        fg = "#080C11" if primary else TEXT_MAIN
+        bg = ACCENT if primary else INPUT_BG
+        fg = "#04231F" if primary else TEXT_MAIN
         active_bg = ACCENT_DARK if primary else "#1F2B3A"
         return tk.Button(
             master,
             text=text,
             command=command,
-            font=("Yu Gothic UI", 10, "bold"),
+            font=("Yu Gothic UI", 9, "bold" if primary else "normal"),
             bg=bg,
             fg=fg,
             activebackground=active_bg,
             activeforeground=fg,
             relief="solid",
             bd=1,
-            padx=14,
-            pady=7,
+            highlightthickness=0,
+            padx=13,
+            pady=8,
             cursor="hand2",
         )
 
+    def _make_secbar(self, parent: tk.Frame, en: str, ja: str) -> tk.Label:
+        """各ペイン共通の見出し帯（secbar）。モックの .secbar に合わせたネイビーバー。
+        右端の可変テキスト（pill/ヒント）用ラベルを返す。
+        """
+        bar = tk.Frame(parent, bg=BG_HEADER, padx=12, pady=8)
+        bar.pack(fill="x")
+        tk.Label(bar, text=en, bg=BG_HEADER, fg=BAR_EN,
+                 font=("Consolas", 7)).pack(side="left")
+        tk.Label(bar, text=ja, bg=BG_HEADER, fg=BAR_INK,
+                 font=("Yu Gothic UI", 8, "bold")).pack(side="left", padx=(6, 0))
+        sp_label = tk.Label(bar, text="", bg=BG_HEADER, fg=BAR_EN, font=("Consolas", 7))
+        sp_label.pack(side="right")
+        return sp_label
+
     def _build_ui(self) -> None:
-        outer = tk.Frame(self.root, bg=BG_APP, padx=12, pady=12)
-        outer.pack(fill="both", expand=True)
+        self.root.configure(bg=BG_APP)
 
-        header = tk.Frame(outer, bg=BG_HEADER, bd=1, relief="solid", padx=18, pady=14)
-        header.pack(fill="x")
+        # ===== タイトルバー =====
+        titlebar = tk.Frame(self.root, bg=BG_HEADER, padx=14, pady=8)
+        titlebar.pack(fill="x")
 
-        # 左側: タイトル
-        header_left = tk.Frame(header, bg=BG_HEADER)
-        header_left.pack(side="left", fill="y")
-        tk.Label(header_left, text=APP_TITLE, bg=BG_HEADER, fg=FG_HEADER, font=("Yu Gothic UI", 18, "bold")).pack(anchor="w")
-        tk.Label(
-            header_left,
-            text="危険箇所の抽出、N番号ごとの工具・補正確認、クリックで原文ジャンプ",
-            bg=BG_HEADER,
-            fg=FG_SUB,
-            font=("Yu Gothic UI", 10),
-        ).pack(anchor="w", pady=(4, 0))
+        mark = tk.Frame(titlebar, bg=BG_HEADER, width=20, height=20,
+                        highlightthickness=1, highlightbackground=ACCENT, highlightcolor=ACCENT)
+        mark.pack_propagate(False)
+        mark.pack(side="left", padx=(0, 12))
+        tk.Label(mark, text="NC", bg=BG_HEADER, fg=ACCENT, font=("Consolas", 7, "bold")).pack(expand=True)
 
-        # 右側: 読込ファイル情報
-        header_right = tk.Frame(header, bg=BG_HEADER)
-        header_right.pack(side="right", fill="y", padx=(20, 0))
-        path_chip = tk.Frame(header_right, bg="#101720", bd=1, relief="solid", padx=12, pady=8)
-        path_chip.pack(side="right")
-        tk.Label(path_chip, text="読込ファイル", bg="#101720", fg=TEXT_MUTED, font=("Yu Gothic UI", 9)).pack(anchor="w")
-        tk.Label(path_chip, textvariable=self.path_var, bg="#101720", fg=TEXT_MAIN,
-                 font=("Yu Gothic UI", 10), anchor="w", justify="left",
-                 wraplength=420).pack(anchor="w", fill="x")
+        tk.Label(titlebar, text="NCプログラム確認ツール", bg=BG_HEADER, fg=FG_HEADER,
+                 font=("Yu Gothic UI", 10, "bold")).pack(side="left")
+        tk.Label(titlebar, text="v34", bg=BG_HEADER, fg=FG_SUB,
+                 font=("Yu Gothic UI", 8)).pack(side="left", padx=(8, 0))
 
-        toolbar_card = tk.Frame(outer, bg=BG_PANEL, bd=1, relief="solid", padx=14, pady=10)
-        toolbar_card.pack(fill="x", pady=(8, 8))
+        tk.Label(titlebar, textvariable=self.path_var, bg="#143856", fg=FG_SUB,
+                 font=("Consolas", 8), anchor="w", padx=10, pady=4,
+                 highlightthickness=1, highlightbackground="#2A5578", highlightcolor="#2A5578",
+                 ).pack(side="right")
 
-        actions = tk.Frame(toolbar_card, bg=BG_PANEL)
-        actions.pack(fill="x")
-        self._make_action_button(actions, "ファイルを開く", self.open_file).pack(side="left", padx=(0, 8))
-        self._make_action_button(actions, "チェック実行", self.run_check, primary=True).pack(side="left", padx=(0, 8))
-        self._make_action_button(actions, "保存", self.save_nc_file).pack(side="left", padx=(0, 8))
-        self._make_action_button(actions, "初品資料出力", self.export_excel).pack(side="left", padx=(0, 8))
-        self._make_action_button(actions, "置換 (Ctrl+H)", self._open_replace_dialog).pack(side="left", padx=(0, 8))
-        self._undo_button = self._make_action_button(actions, "↶ 元に戻す", self._do_undo)
-        self._undo_button.pack(side="left", padx=(0, 8))
-        self._make_action_button(actions, "入力をクリア", self.clear_input).pack(side="left", padx=(0, 16))
+        # ===== ツールバー =====
+        toolbar = tk.Frame(self.root, bg=BG_PANEL, padx=14, pady=8)
+        toolbar.pack(fill="x")
+        self._make_action_button(toolbar, "ファイルを開く", self.open_file).pack(side="left", padx=(0, 7))
+        self._make_action_button(toolbar, "チェック実行", self.run_check, primary=True).pack(side="left", padx=(0, 7))
+        self._make_action_button(toolbar, "保存", self.save_nc_file).pack(side="left", padx=(0, 7))
+        self._make_action_button(toolbar, "初品資料出力", self.export_excel).pack(side="left", padx=(0, 7))
+        tk.Frame(toolbar, bg="#2A3846", width=1, height=22).pack(side="left", padx=5)
+        self._make_action_button(toolbar, "置換 (Ctrl+H)", self._open_replace_dialog).pack(side="left", padx=(0, 7))
+        self._undo_button = self._make_action_button(toolbar, "↶ 元に戻す", self._do_undo)
+        self._undo_button.pack(side="left", padx=(0, 7))
+        self._make_action_button(toolbar, "入力をクリア", self.clear_input).pack(side="left", padx=(0, 7))
 
         # フォントサイズ変更
         self._font_size = 11
-        font_frame = tk.Frame(actions, bg=BG_PANEL)
-        font_frame.pack(side="left")
-        btn_kw = {"font": ("Yu Gothic UI", 9, "bold"), "bg": "#141B24", "fg": TEXT_MAIN,
+        font_frame = tk.Frame(toolbar, bg=BG_PANEL)
+        font_frame.pack(side="right")
+        btn_kw = {"font": ("Consolas", 9), "bg": INPUT_BG, "fg": TEXT_MUTED,
                   "activebackground": "#1F2B3A", "activeforeground": TEXT_MAIN,
-                  "relief": "solid", "bd": 1, "padx": 6, "pady": 1, "cursor": "hand2"}
-        tk.Button(font_frame, text="A-", command=self._font_decrease, **btn_kw).pack(side="left", padx=(0, 4))
+                  "relief": "solid", "bd": 1, "highlightthickness": 0,
+                  "width": 2, "height": 1, "cursor": "hand2"}
+        tk.Button(font_frame, text="A-", command=self._font_decrease, **btn_kw).pack(side="left", padx=(0, 5))
         self._font_size_label = tk.Label(font_frame, text="11pt", bg=BG_PANEL, fg=TEXT_MUTED,
-                                         font=("Yu Gothic UI", 9), width=4, anchor="center")
-        self._font_size_label.pack(side="left", padx=(0, 4))
+                                         font=("Consolas", 8), width=4, anchor="center")
+        self._font_size_label.pack(side="left", padx=(0, 5))
         tk.Button(font_frame, text="A+", command=self._font_increase, **btn_kw).pack(side="left")
 
-        body = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, bg=BG_APP, bd=0)
-        body.pack(fill="both", expand=True, padx=12, pady=(0, 0))
+        # ===== 3ペイン =====
+        body = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, sashwidth=1, sashrelief=tk.FLAT,
+                              bg=BORDER, bd=0)
+        body.pack(fill="both", expand=True)
 
-        block_info_panel = tk.Frame(body, bg=BG_PANEL, bd=1, relief="solid")
-        input_panel = tk.Frame(body, bg=BG_PANEL, bd=1, relief="solid")
-        result_panel = tk.Frame(body, bg=BG_PANEL, bd=1, relief="solid")
+        block_info_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
+        input_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
+        result_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
 
         # 画面幅から比率1:2:2で初期幅を計算
         try:
@@ -1375,31 +1391,33 @@ class NcCheckApp:
         self._build_input_panel(input_panel)
         self._build_result_panel(result_panel)
 
-        # 検索バー（常時表示）
-        self._search_bar = tk.Frame(self.root, bg="#101720", bd=1, relief="solid", padx=10, pady=6)
-        self._search_bar.pack(fill="x", padx=12, pady=(6, 0))
+        # ===== 検索バー =====
+        self._search_bar = tk.Frame(self.root, bg=BG_PANEL, padx=14, pady=8,
+                                    highlightthickness=1, highlightbackground=BORDER, bd=0)
+        self._search_bar.pack(fill="x")
 
-        tk.Label(self._search_bar, text="検索:", bg="#101720", fg=TEXT_MAIN,
-                 font=("Yu Gothic UI", 10)).pack(side="left", padx=(0, 6))
+        tk.Label(self._search_bar, text="検索", bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 8)).pack(side="left", padx=(0, 8))
 
         self._search_entry = tk.Entry(
             self._search_bar, textvariable=self._search_var,
-            font=("Consolas", 11), bg="#080C11", fg=TEXT_MAIN,
+            font=("Consolas", 9), bg=INPUT_BG, fg=TEXT_MAIN,
             insertbackground=TEXT_MAIN, relief="solid", bd=1,
-            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
-            width=30,
+            highlightthickness=1, highlightbackground="#2A3846", highlightcolor=ACCENT,
+            width=34,
         )
         self._search_entry.pack(side="left", padx=(0, 6))
         self._search_entry.bind("<Return>", self._search_next)
         self._search_entry.bind("<Shift-Return>", self._search_prev)
         self._search_entry.bind("<KeyRelease>", self._on_search_changed)
 
-        self._search_count_label = tk.Label(self._search_bar, text="", bg="#101720", fg=TEXT_MUTED,
-                                            font=("Yu Gothic UI", 9))
+        self._search_count_label = tk.Label(self._search_bar, text="", bg=BG_PANEL, fg=TEXT_MUTED,
+                                            font=("Yu Gothic UI", 8))
 
-        btn_style = {"font": ("Yu Gothic UI", 9, "bold"), "bg": "#141B24", "fg": TEXT_MAIN,
+        btn_style = {"font": ("Yu Gothic UI", 8), "bg": INPUT_BG, "fg": TEXT_MAIN,
                      "activebackground": "#1F2B3A", "activeforeground": TEXT_MAIN,
-                     "relief": "solid", "bd": 1, "padx": 8, "pady": 2, "cursor": "hand2"}
+                     "relief": "solid", "bd": 1, "highlightthickness": 0,
+                     "padx": 10, "pady": 4, "cursor": "hand2"}
 
         tk.Button(self._search_bar, text="次へ", command=self._search_next, **btn_style).pack(side="left", padx=(0, 4))
         tk.Button(self._search_bar, text="前へ", command=self._search_prev, **btn_style).pack(side="left", padx=(0, 4))
@@ -1408,23 +1426,17 @@ class NcCheckApp:
         self.input_text.tag_configure("search_highlight", background="#1B3A36", foreground="#A7F3D0")
         self.input_text.tag_configure("search_current", background="#1F8F86", foreground="#101720")
 
-        status_bar = tk.Frame(self.root, bg="#101720", bd=1, relief="solid", padx=12, pady=8)
-        status_bar.pack(fill="x", padx=12, pady=(10, 12))
-        tk.Label(status_bar, textvariable=self.status_var, bg="#101720", fg=TEXT_MAIN, anchor="w", justify="left", font=("Yu Gothic UI", 10)).pack(fill="x")
+        # ===== ステータスバー =====
+        status_bar = tk.Frame(self.root, bg=INPUT_BG, padx=14, pady=6,
+                              highlightthickness=1, highlightbackground=BORDER, bd=0)
+        status_bar.pack(fill="x")
+        tk.Label(status_bar, textvariable=self.status_var, bg=INPUT_BG, fg=TEXT_MUTED,
+                 anchor="w", justify="left", font=("Consolas", 8)).pack(fill="x")
 
     def _build_input_panel(self, parent: tk.Frame) -> None:
-        header = tk.Frame(parent, bg=BG_PANEL, padx=14, pady=10)
-        header.pack(fill="x")
-        tk.Label(header, text="NCプログラム入力", bg=BG_PANEL, fg=TEXT_MAIN, font=("Yu Gothic UI", 13, "bold")).pack(anchor="w")
-        tk.Label(
-            header,
-            text="ファイル読込でも直接貼り付けでもOK。チェック対象行は赤、クリック先は黄色で強調。",
-            bg=BG_PANEL,
-            fg=TEXT_MUTED,
-            font=("Yu Gothic UI", 9),
-        ).pack(anchor="w", pady=(4, 0))
+        self._source_secbar_sp = self._make_secbar(parent, "SOURCE", "NCプログラム")
 
-        editor_frame = tk.Frame(parent, bg=BG_PANEL, padx=14, pady=0)
+        editor_frame = tk.Frame(parent, bg=BG_PANEL, padx=0, pady=0)
         editor_frame.pack(fill="both", expand=True)
 
         # 行番号ガター + 本文 + スクロールバー を横並び配置
@@ -1606,6 +1618,20 @@ class NcCheckApp:
         self._apply_linenumber_highlights()
         # Nブロック強調も再適用（行番号再生成でタグが消えるため）
         self._apply_n_block_dividers()
+        self._update_source_secbar(last_line)
+
+    def _update_source_secbar(self, total_lines: int) -> None:
+        if not hasattr(self, "_source_secbar_sp"):
+            return
+        try:
+            content = self.input_text.get("1.0", "end-1c")
+        except tk.TclError:
+            content = ""
+        if not content.strip():
+            self._source_secbar_sp.configure(text="")
+            return
+        program_number, _ = extract_program_number(content.splitlines())
+        self._source_secbar_sp.configure(text=f"{program_number} / {total_lines} 行")
 
     def _apply_linenumber_highlights(self) -> None:
         """行番号ガター & 本文カーソル行の強調を再適用"""
@@ -1726,16 +1752,8 @@ class NcCheckApp:
         self._update_block_info_for_current_line()
 
     def _build_result_panel(self, parent: tk.Frame) -> None:
-        header = tk.Frame(parent, bg=BG_PANEL, padx=14, pady=10)
-        header.pack(fill="x")
-        tk.Label(header, text="チェック結果", bg=BG_PANEL, fg=TEXT_MAIN, font=("Yu Gothic UI", 13, "bold")).pack(anchor="w")
-        tk.Label(
-            header,
-            text="項目をクリックすると原文へジャンプ。判定上限の変更や本文編集で自動再チェック。",
-            bg=BG_PANEL,
-            fg=TEXT_MUTED,
-            font=("Yu Gothic UI", 9),
-        ).pack(anchor="w", pady=(4, 0))
+        sp = self._make_secbar(parent, "RESULT", "チェック結果")
+        sp.configure(text="クリックで原文へジャンプ")
 
         # ===== 判定は細い帯1本（デカい枠は置かない） =====
         self._verdict_band = VerdictBand(parent)
@@ -1822,7 +1840,7 @@ class NcCheckApp:
         self._toc_selected_line: int | None = None
         self._toc_item_widgets: dict[int, list[tk.Widget]] = {}
         self._last_toc_groups: list[dict] | None = None
-        self._render_toc_placeholder("▶ チェック実行後に表示されます")
+        self._render_toc_placeholder("チェック実行後に表示されます")
 
         # ===== 非表示の内部レポートバッファ =====
         # 旧テキストレポート生成・行エラーハイライト判定・「編集後の初回チェック済み」
@@ -1858,53 +1876,25 @@ class NcCheckApp:
 
     def _build_block_info_panel(self, parent: tk.Frame) -> None:
         """カーソル位置のNブロック情報をリアルタイム表示するパネル"""
-        # ヘッダー
-        header = tk.Frame(parent, bg=BG_PANEL, padx=14, pady=10)
-        header.pack(fill="x")
+        self._block_secbar_sp = self._make_secbar(parent, "BLOCK", "ブロック情報")
 
-        # タイトル行（タイトル左、更新ボタン右）
-        title_row = tk.Frame(header, bg=BG_PANEL)
-        title_row.pack(fill="x")
-        tk.Label(title_row, text="▶ BLOCK INFO", bg=BG_PANEL, fg=ACCENT,
-                 font=("Consolas", 13, "bold")).pack(side="left", anchor="w")
-        tk.Button(
-            title_row, text="更新", command=self.run_check,
-            font=("Yu Gothic UI", 9, "bold"),
-            bg="#123A38", fg=ACCENT,
-            activebackground="#1F2B3A", activeforeground=ACCENT,
-            relief="solid", bd=1, padx=10, pady=2,
-            cursor="hand2",
-        ).pack(side="right")
-
-        tk.Label(header, text="現在のNブロック情報",
-                 bg=BG_PANEL, fg=TEXT_MUTED,
-                 font=("Yu Gothic UI", 9)).pack(anchor="w", pady=(2, 0))
-
-        # フッター（自動更新トグル＋注意書き）— content_wrapより先にpackして下端に固定
-        footer = tk.Frame(parent, bg=BG_PANEL, padx=14, pady=8)
+        # フッター（自動更新トグル）— content_wrapより先にpackして下端に固定
+        footer = tk.Frame(parent, bg=BG_PANEL, padx=12, pady=9,
+                          highlightthickness=1, highlightbackground=BORDER, bd=0)
         footer.pack(side="bottom", fill="x")
 
-        # 自動更新トグルボタン
         self._auto_refresh_enabled = True  # デフォルトON
-        self._auto_refresh_btn = tk.Button(
-            footer, text="● 自動更新 ON",
-            command=self._toggle_auto_refresh,
-            font=("Yu Gothic UI", 9, "bold"),
-            bg="#123A38", fg=ACCENT,
-            activebackground="#1F2B3A", activeforeground=ACCENT,
-            relief="solid", bd=1, padx=10, pady=3,
-            cursor="hand2", anchor="w",
-        )
-        self._auto_refresh_btn.pack(fill="x", pady=(0, 6))
-
-        # 状態別注意書き（ON/OFFで切り替え）
-        self._auto_refresh_note = tk.Label(
-            footer, text="",
-            bg=BG_PANEL, fg="#E0AE55",
-            font=("Yu Gothic UI", 8),
-            wraplength=240, justify="left",
-        )
-        self._auto_refresh_note.pack(anchor="w")
+        self._auto_refresh_btn = tk.Frame(footer, bg=BG_PANEL, cursor="hand2")
+        self._auto_refresh_btn.pack(anchor="w")
+        self._auto_refresh_dot = tk.Canvas(self._auto_refresh_btn, width=7, height=7,
+                                           bg=BG_PANEL, highlightthickness=0, bd=0)
+        self._auto_refresh_dot_oval = self._auto_refresh_dot.create_oval(0, 0, 7, 7, fill=OK_COLOR, outline="")
+        self._auto_refresh_dot.pack(side="left", padx=(0, 7))
+        self._auto_refresh_label = tk.Label(self._auto_refresh_btn, text="自動更新 ON",
+                                            bg=BG_PANEL, fg=OK_COLOR, font=("Yu Gothic UI", 8), cursor="hand2")
+        self._auto_refresh_label.pack(side="left")
+        for w in (self._auto_refresh_btn, self._auto_refresh_dot, self._auto_refresh_label):
+            w.bind("<Button-1>", lambda _e: self._toggle_auto_refresh())
         self._update_auto_refresh_ui()  # 初期表示
 
         # 内容コンテナ（スクロール可能）— footerより後にpackすることで間を埋める
@@ -1963,31 +1953,13 @@ class NcCheckApp:
                 self._edit_debounce_id = None
 
     def _update_auto_refresh_ui(self) -> None:
-        """トグルの見た目と注意書きをON/OFF状態に合わせて更新"""
-        if self._auto_refresh_enabled:
-            self._auto_refresh_btn.configure(
-                text="● 自動更新 ON",
-                bg="#123A38", fg=ACCENT,
-                activebackground="#1F2B3A", activeforeground=ACCENT,
-            )
-            self._auto_refresh_note.configure(
-                text="※ 編集後 約1秒で自動更新されます\n"
-                     "　 動作が重い・煩わしい時は停止してください",
-                fg="#E0AE55",
-            )
-        else:
-            self._auto_refresh_btn.configure(
-                text="○ 自動更新 OFF",
-                bg="#301019", fg="#C97C8A",
-                activebackground="#452030", activeforeground="#E0A0AE",
-            )
-            self._auto_refresh_note.configure(
-                text="※ 自動更新 停止中\n"
-                     "　 更新ボタンを押すか自動更新をONにしてください",
-                fg="#C97C8A",
-            )
+        """自動更新ライブインジケータの見た目をON/OFF状態に合わせて更新"""
+        color = OK_COLOR if self._auto_refresh_enabled else TEXT_MUTED
+        text = "自動更新 ON" if self._auto_refresh_enabled else "自動更新 OFF"
+        self._auto_refresh_dot.itemconfigure(self._auto_refresh_dot_oval, fill=color)
+        self._auto_refresh_label.configure(text=text, fg=color)
 
-    def _show_block_info_placeholder(self, message: str = "▶ チェック実行後に表示されます") -> None:
+    def _show_block_info_placeholder(self, message: str = "チェック実行後に表示されます") -> None:
         """プレースホルダー or 「N番号外」表示"""
         if not hasattr(self, "_block_info_inner"):
             return
@@ -1999,6 +1971,8 @@ class NcCheckApp:
                  font=("Yu Gothic UI", 10), wraplength=250, justify="left").pack(
                      anchor="w", pady=14, padx=4)
         self._current_displayed_label = None
+        if hasattr(self, "_block_secbar_sp"):
+            self._block_secbar_sp.configure(text="")
 
     def _render_block_info(self, info: dict) -> None:
         """1ブロック分の情報をカード表示。モックの nblock + gauges 構成に合わせ、
@@ -2025,11 +1999,15 @@ class NcCheckApp:
         if line_min and line_max:
             span = line_max - line_min + 1
             range_text = f"{line_min}行 – {line_max}行 / {span} lines"
+            pill_text = f"L{line_min}–L{line_max}"
         else:
             range_text = "―"
+            pill_text = ""
         tk.Label(nblock, text=range_text,
                  bg=BG_PANEL, fg=TEXT_MUTED,
                  font=("Consolas", 9)).pack(anchor="center", pady=(3, 10))
+        if hasattr(self, "_block_secbar_sp"):
+            self._block_secbar_sp.configure(text=pill_text)
 
         # 危険件数バッジ（あれば）
         danger_count = int(info.get("danger_count", 0) or 0)
@@ -2180,7 +2158,7 @@ class NcCheckApp:
         if not self._block_info_cache:
             # チェック未実行
             if force or self._current_displayed_label is not None:
-                self._show_block_info_placeholder("▶ チェック実行後に表示されます")
+                self._show_block_info_placeholder("チェック実行後に表示されます")
             return
 
         try:
@@ -2581,10 +2559,10 @@ class NcCheckApp:
         # 新ファイル読込→旧キャッシュは無効、プレースホルダーへ
         self._block_info_cache = {}
         self._block_info_ranges = []
-        self._show_block_info_placeholder("▶ チェック実行後に表示されます")
+        self._show_block_info_placeholder("チェック実行後に表示されます")
         self._last_toc_groups = None
         self._toc_selected_line = None
-        self._render_toc_placeholder("▶ チェック実行後に表示されます")
+        self._render_toc_placeholder("チェック実行後に表示されます")
         if hasattr(self, "_verdict_band"):
             self._verdict_band.set_state("idle")
         if hasattr(self, "_minimap"):
@@ -2767,10 +2745,10 @@ class NcCheckApp:
         # キャッシュクリア＋プレースホルダー
         self._block_info_cache = {}
         self._block_info_ranges = []
-        self._show_block_info_placeholder("▶ チェック実行後に表示されます")
+        self._show_block_info_placeholder("チェック実行後に表示されます")
         self._last_toc_groups = None
         self._toc_selected_line = None
-        self._render_toc_placeholder("▶ チェック実行後に表示されます")
+        self._render_toc_placeholder("チェック実行後に表示されます")
         if hasattr(self, "_verdict_band"):
             self._verdict_band.set_state("idle")
         if hasattr(self, "_minimap"):
