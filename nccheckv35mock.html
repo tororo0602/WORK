@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCプログラム確認ツール v35 — TC Suite調</title>
+<style>
+  :root{
+    --ground:#0B0F14; --panel:#131A22; --rail:#0E141B; --sunk:#080C11;
+    --line:#1E2833; --line2:#2A3846;
+    --bar:#1B4B73; --bar-lo:#153A5A; --bar-ink:#CFE6F7; --bar-en:#7FB2D9;
+    --cyan:#22D3C5; --cyan-lo:#126B65;
+    --ok:#34D399; --warn:#FBBF24; --alert:#FB5E7E; --info:#6CB6FF; --violet:#C08CFF;
+    --ink:#DEE7EE; --dim:#8296A6; --faint:#54677A;
+    --mono:"Consolas",ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,"Yu Gothic UI","Hiragino Sans","Noto Sans JP",sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:13px;
+       height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .app{height:100vh;display:flex;flex-direction:column}
+
+  /* ===== タイトル ===== */
+  .titlebar{display:flex;align-items:center;gap:12px;padding:8px 14px;
+    background:linear-gradient(180deg,#1E5286,#17416B);border-bottom:1px solid #0A2038}
+  .mark{width:20px;height:20px;border:1.5px solid var(--cyan);border-radius:4px;color:var(--cyan);
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:700}
+  .tname{font-weight:700;font-size:13px;color:#fff}
+  .tname small{font-weight:400;color:#A8CCEA;margin-left:8px;font-size:11px}
+  .tfile{margin-left:auto;font-family:var(--mono);font-size:11px;color:#A8CCEA;
+    background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.10);padding:4px 10px;border-radius:4px;
+    max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ===== ツールバー ===== */
+  .toolbar{display:flex;align-items:center;gap:7px;padding:8px 14px;
+    background:var(--panel);border-bottom:1px solid var(--line)}
+  .btn{background:var(--sunk);border:1px solid var(--line2);color:var(--ink);
+    padding:8px 13px;border-radius:6px;font:inherit;font-size:12.5px;cursor:pointer}
+  .btn:hover{border-color:var(--cyan-lo);color:#fff}
+  .btn.primary{background:var(--cyan);border-color:var(--cyan);color:#04231F;font-weight:700}
+  .sep{width:1px;height:22px;background:var(--line2);margin:0 5px}
+  .fsz{display:flex;align-items:center;gap:5px;margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .fsz .b{background:var(--sunk);border:1px solid var(--line2);color:var(--dim);
+    width:26px;height:26px;border-radius:5px;cursor:pointer;font:inherit}
+
+  /* ===== 3ペイン ===== */
+  .body{flex:1;display:flex;min-height:0}
+  .secbar{background:linear-gradient(180deg,var(--bar),var(--bar-lo));
+    padding:8px 12px;font-size:10.5px;font-weight:700;letter-spacing:1.5px;color:var(--bar-ink);
+    display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(0,0,0,.45);flex:0 0 auto}
+  .secbar .en{font-family:var(--mono);font-size:9.5px;color:var(--bar-en);letter-spacing:1px}
+  .secbar .sp{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--bar-en);font-weight:400}
+  .secbar .pill{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;padding:1px 8px;font-family:var(--mono);font-size:9.5px;color:var(--bar-en)}
+
+  /* ===== 左：BLOCK INFO（計器盤） ===== */
+  .blk{width:274px;flex:0 0 274px;background:var(--rail);border-right:1px solid var(--line2);
+    display:flex;flex-direction:column}
+  .blk-scroll{flex:1;overflow:auto}
+
+  /* Nブロックの主表示 */
+  .nblock{padding:16px 14px 14px;text-align:center;
+    background:radial-gradient(120% 90% at 50% 0%,rgba(34,211,197,.10),transparent 70%);
+    border-bottom:1px solid var(--line)}
+  .nblock .nv{font-family:var(--mono);font-size:44px;font-weight:800;line-height:1;
+    color:var(--cyan);letter-spacing:1px;text-shadow:0 0 26px rgba(34,211,197,.35)}
+  .nblock .tool{margin-top:9px;font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+  .nblock .rng{margin-top:5px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+
+  /* 主要3値の計器 */
+  .gauges{display:flex;border-bottom:1px solid var(--line)}
+  .gauge{flex:1;padding:10px 8px;text-align:center;border-right:1px solid var(--line)}
+  .gauge:last-child{border-right:none}
+  .gauge .gl{font-size:9px;letter-spacing:1.4px;color:var(--faint);margin-bottom:3px}
+  .gauge .gv{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--ink);line-height:1.1}
+  .gauge .gu{font-size:9.5px;color:var(--faint);margin-left:2px}
+  .gauge.hot .gv{color:var(--alert)}
+
+  /* 明細 */
+  .rows{padding:2px 0}
+  .r{display:flex;align-items:flex-start;gap:10px;padding:8px 14px;border-bottom:1px solid #131c25}
+  .r .k{width:66px;flex:0 0 auto;font-size:11px;color:var(--faint);padding-top:1px}
+  .r .v{flex:1;font-family:var(--mono);font-size:12px;color:var(--ink);min-width:0;word-break:break-all}
+  .r .v .mut{color:var(--faint)}
+  .r .v .ln{color:var(--cyan);cursor:pointer;font-size:11px}
+  .r .v .ln:hover{text-decoration:underline}
+  .r .v .multi{display:block;line-height:1.75}
+  .r.b .v{color:var(--info)}
+
+  .blk-foot{padding:9px 14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .live{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ok)}
+  .live .d{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+
+  /* ===== 中央：原文＋ミニマップ ===== */
+  .src{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--sunk)}
+  .src-inner{flex:1;display:flex;min-height:0}
+  .code{flex:1;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.7;padding:5px 0}
+  .cl{display:flex;padding:0 12px;white-space:pre;cursor:pointer}
+  .cl:hover{background:rgba(255,255,255,.03)}
+  .cl .g{color:#3B4A59;width:48px;text-align:right;padding-right:14px;flex:0 0 auto;
+    user-select:none;font-variant-numeric:tabular-nums}
+  .cl.err{background:rgba(251,94,126,.12);box-shadow:inset 3px 0 0 var(--alert)}
+  .cl.err .g{color:var(--alert)}
+  .cl.wrn{background:rgba(251,191,36,.10);box-shadow:inset 3px 0 0 var(--warn)}
+  .cl.wrn .g{color:var(--warn)}
+  .cl.cur{background:rgba(34,211,197,.13);box-shadow:inset 3px 0 0 var(--cyan)}
+  .cl.cur .g{color:var(--cyan)}
+  .cl.nhead{background:rgba(108,182,255,.05)}
+
+  /* ミニマップ：995行の危険分布を一望する */
+  .mini{width:16px;flex:0 0 16px;background:#06090D;border-left:1px solid var(--line);
+    position:relative;cursor:pointer}
+  .mini i{position:absolute;left:2px;right:2px;height:3px;border-radius:1px}
+  .mini i.e{background:var(--alert);box-shadow:0 0 5px rgba(251,94,126,.8)}
+  .mini i.w{background:var(--warn)}
+  .mini i.n{background:rgba(108,182,255,.35);height:1px}
+  .mini .vp{position:absolute;left:0;right:0;background:rgba(255,255,255,.09);
+    border-top:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.18)}
+
+  /* NCシンタックス（元ツール踏襲） */
+  .cm{color:#5C6E62} .n_{color:#F0D060;font-weight:700} .o_{color:#F0D060;font-weight:700}
+  .g_{color:#FF6B6B} .m_{color:#FF9557} .s_{color:#3DDDFF} .f_{color:#34D399}
+  .t_{color:#66CCFF} .h_{color:#88AAFF} .ax{color:#5BE584}
+
+  /* ===== 右：チェック（目次） ===== */
+  .chk{width:398px;flex:0 0 398px;background:var(--panel);border-left:1px solid var(--line2);
+    display:flex;flex-direction:column}
+
+  /* 判定は細帯。デカい枠は置かない */
+  .verdict{display:flex;align-items:center;gap:11px;padding:10px 13px;
+    border-bottom:1px solid var(--line);background:var(--sunk)}
+  .verdict .lamp{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+  .verdict.ng .lamp{background:var(--alert);box-shadow:0 0 10px var(--alert)}
+  .verdict.wn .lamp{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+  .verdict.ok .lamp{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+  .verdict .vt{font-family:var(--mono);font-size:19px;font-weight:800;letter-spacing:1px}
+  .verdict.ng .vt{color:var(--alert)} .verdict.wn .vt{color:var(--warn)} .verdict.ok .vt{color:var(--ok)}
+  .verdict .vs{font-size:11.5px;color:var(--dim)}
+  .verdict .tally{margin-left:auto;display:flex;gap:7px;font-family:var(--mono);font-size:10.5px}
+  .verdict .tally b{border:1px solid var(--line2);border-radius:5px;padding:3px 8px;
+    background:#0C1219;font-weight:700}
+  .verdict .tally b.e{color:var(--alert);border-color:#5A2530}
+  .verdict .tally b.w{color:var(--warn);border-color:#6E5520}
+  .verdict .tally b.l{color:var(--faint)}
+
+  /* 目次本体 */
+  .toc{flex:1;overflow:auto}
+  .grp{border-bottom:1px solid #131c25}
+  .grp-h{display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer}
+  .grp-h:hover{background:#171F29}
+  .grp-h .cv{font-size:9px;color:var(--faint);width:9px;flex:0 0 auto;transition:transform .15s}
+  .grp.open .grp-h .cv{transform:rotate(90deg)}
+  .grp-h .sw{width:3px;height:15px;border-radius:2px;flex:0 0 auto}
+  .grp-h .nm{flex:1;font-size:12.5px;color:var(--ink)}
+  .grp-h .ct{font-family:var(--mono);font-size:12px;font-weight:700}
+  .grp-h .gl{font-family:var(--mono);font-size:11px;width:12px;text-align:center}
+  .items{display:none}
+  .grp.open .items{display:block}
+
+  /* 目次の1行 = 原文へのジャンプ台 */
+  .it{display:flex;align-items:center;gap:9px;padding:7px 13px 7px 34px;cursor:pointer;
+    border-left:3px solid transparent;font-size:12px}
+  .it:hover{background:#171F29}
+  .it.sel{background:rgba(34,211,197,.10);border-left-color:var(--cyan)}
+  .it .ln{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--faint);
+    font-size:11px;width:42px;flex:0 0 auto;text-align:right}
+  .it.sel .ln{color:var(--cyan)}
+  .it .vl{font-family:var(--mono);font-size:11.5px;font-weight:700;width:62px;flex:0 0 auto}
+  .it .ms{flex:1;color:var(--dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .it.sel .ms{color:var(--ink)}
+
+  /* 全項目クリア時 */
+  .clean{padding:26px 16px;text-align:center;color:var(--faint);font-size:12px}
+  .clean .big{color:var(--ok);font-size:22px;font-family:var(--mono);font-weight:800;margin-bottom:6px}
+
+  /* ゼロ件の畳み表示 */
+  .zeros{padding:9px 13px;font-size:11px;color:var(--faint);display:flex;flex-wrap:wrap;gap:5px 12px;
+    border-bottom:1px solid #131c25;background:#0F151C}
+  .zeros .z{display:inline-flex;align-items:center;gap:5px}
+  .zeros .z i{color:var(--ok);font-family:var(--mono);font-size:10px}
+
+  /* 判定上限：格下げして最下部に */
+  .limits{border-top:1px solid var(--line2);background:var(--sunk)}
+  .lim-h{display:flex;align-items:center;gap:8px;padding:8px 13px;cursor:pointer;
+    font-size:10.5px;letter-spacing:1.4px;color:var(--faint);font-weight:700}
+  .lim-h .cv{font-size:9px;transition:transform .15s}
+  .limits.open .lim-h .cv{transform:rotate(90deg)}
+  .lim-b{display:none;padding:0 13px 12px;gap:10px}
+  .limits.open .lim-b{display:flex}
+  .lf{flex:1}
+  .lf label{display:block;font-size:10px;color:var(--faint);margin-bottom:4px}
+  .lf input{width:100%;background:#0C1219;border:1px solid var(--line2);color:var(--ink);
+    padding:8px 10px;border-radius:5px;font-family:var(--mono);font-size:14px;text-align:right;outline:none}
+  .lf input:focus{border-color:var(--cyan-lo)}
+
+  /* ===== 下部 ===== */
+  .find{display:flex;align-items:center;gap:8px;padding:8px 14px;
+    background:var(--panel);border-top:1px solid var(--line)}
+  .find input{flex:1;max-width:340px;background:var(--sunk);border:1px solid var(--line2);
+    color:var(--ink);padding:8px 12px;border-radius:6px;font:inherit;font-size:12.5px;outline:none}
+  .find input:focus{border-color:var(--cyan-lo)}
+  .status{display:flex;align-items:center;gap:18px;padding:6px 14px;background:var(--sunk);
+    border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .status b{color:var(--dim);font-weight:400}
+  .status .sp{margin-left:auto}
+
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  @media(max-width:1300px){.chk{width:340px;flex:0 0 340px}.blk{width:236px;flex:0 0 236px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <span class="mark">NC</span>
+    <span class="tname">NCプログラム確認ツール<small>v35</small></span>
+    <span class="tfile">//Lansys/KikaiKyoyu/k-program/CLA1/O-101〜O-200/O0101</span>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn">ファイルを開く</button>
+    <button class="btn primary">チェック実行</button>
+    <button class="btn">保存</button>
+    <button class="btn">初品資料出力</button>
+    <span class="sep"></span>
+    <button class="btn">置換 (Ctrl+H)</button>
+    <button class="btn">↰ 元に戻す</button>
+    <button class="btn">入力をクリア</button>
+    <div class="fsz"><button class="b">A-</button><span>11pt</span><button class="b">A+</button></div>
+  </div>
+
+  <div class="body">
+
+    <!-- ===== 左：BLOCK INFO ===== -->
+    <aside class="blk">
+      <div class="secbar">
+        <span class="en">BLOCK</span>ブロック情報
+        <span class="sp"><span class="pill">L20–L99</span></span>
+      </div>
+      <div class="blk-scroll">
+        <div class="nblock">
+          <div class="nv" id="bN">N1</div>
+          <div class="tool" id="bTool">S50-DCLNN R0.8</div>
+          <div class="rng">20行 – 99行 / 80 lines</div>
+        </div>
+
+        <!-- 一番見る3つを計器化 -->
+        <div class="gauges">
+          <div class="gauge"><div class="gl">T番号</div><div class="gv" id="gT">T2001</div></div>
+          <div class="gauge"><div class="gl">H補正</div><div class="gv" id="gH">H1</div></div>
+          <div class="gauge"><div class="gl">送り</div><div class="gv" id="gF">0.2<span class="gu">mm/rev</span></div></div>
+        </div>
+
+        <div class="rows">
+          <div class="r"><span class="k">径補正</span><span class="v"><span class="mut">—</span></span></div>
+          <div class="r"><span class="k">ワーク座標</span><span class="v">G54</span></div>
+          <div class="r"><span class="k">回転数</span><span class="v"><span class="multi">G50 S1500</span><span class="multi">G96 S30</span><span class="multi">G97 S995, S200, S1220</span></span></div>
+          <div class="r"><span class="k">回転方向</span><span class="v">M3 <span class="mut">主軸 正転</span></span></div>
+          <div class="r"><span class="k">クーラント</span><span class="v">M484 <span class="mut">スルースピンドル</span></span></div>
+          <div class="r b"><span class="k">B軸</span><span class="v">B: -45</span></div>
+          <div class="r"><span class="k">Z最小</span><span class="v">-63.5 <span class="ln" onclick="jump(56)">(56行)</span></span></div>
+          <div class="r"><span class="k">Z最大</span><span class="v">3.728 <span class="ln" onclick="jump(49)">(49行)</span></span></div>
+        </div>
+      </div>
+      <div class="blk-foot">
+        <span class="live"><span class="d"></span>自動更新 ON</span>
+      </div>
+    </aside>
+
+    <!-- ===== 中央：原文 ===== -->
+    <section class="src">
+      <div class="secbar">
+        <span class="en">SOURCE</span>NCプログラム
+        <span class="sp">O0101 / 995 行</span>
+      </div>
+      <div class="src-inner">
+        <div class="code" id="code"></div>
+        <div class="mini" id="mini" title="危険箇所の分布"></div>
+      </div>
+    </section>
+
+    <!-- ===== 右：チェック結果＝目次 ===== -->
+    <aside class="chk">
+      <div class="secbar">
+        <span class="en">RESULT</span>チェック結果
+        <span class="sp">クリックで原文へジャンプ</span>
+      </div>
+
+      <!-- 判定は細帯 -->
+      <div class="verdict wn" id="verdict">
+        <span class="lamp"></span>
+        <span class="vt" id="vt">WRN</span>
+        <span class="vs" id="vs">軽度の警告</span>
+        <span class="tally">
+          <b class="e" id="tErr">ERR 0</b>
+          <b class="w" id="tWrn">WRN 2</b>
+          <b class="l" id="tLine">995 L</b>
+        </span>
+      </div>
+
+      <!-- ゼロ件は畳んで1行に -->
+      <div class="zeros" id="zeros"></div>
+
+      <!-- 目次 -->
+      <div class="toc" id="toc"></div>
+
+      <!-- 判定上限は格下げ -->
+      <div class="limits" id="limits">
+        <div class="lim-h" onclick="toggleLim()">
+          <span class="cv">▶</span>判定上限の設定
+          <span style="margin-left:auto;font-family:var(--mono);color:var(--dim)">S12000 / F40000</span>
+        </div>
+        <div class="lim-b">
+          <div class="lf"><label>回転数 判定上限 (S)</label><input value="12000"></div>
+          <div class="lf"><label>送り 判定上限 (F)</label><input value="40000"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="find">
+    <span style="color:var(--faint);font-size:11px">検索</span>
+    <input placeholder="プログラム内を検索">
+    <button class="btn">次へ</button>
+    <button class="btn">前へ</button>
+  </div>
+  <div class="status">
+    <span>SCAN: <b id="stScan">完了</b></span>
+    <span>THRESHOLD: <b>S12000 / F40000</b></span>
+    <span class="sp" id="stSel">行 —</span>
+  </div>
+</div>
+
+<script>
+/* ===== 検査項目（元ツールの kind に対応） ===== */
+var GROUPS = [
+  {k:'overspeed', nm:'回転数超え',       col:'#FB5E7E', sev:'err'},
+  {k:'overfeed',  nm:'送り超え',         col:'#FF9557', sev:'err'},
+  {k:'decimal',   nm:'小数点間違い',     col:'#F0D060', sev:'err'},
+  {k:'tailstock', nm:'芯押しマクロ忘れ', col:'#C08CFF', sev:'err'},
+  {k:'tcp',       nm:'G43.4 (TCP)',     col:'#6CB6FF', sev:'wrn'},
+  {k:'dupn',      nm:'N番号重複',        col:'#22D3C5', sev:'wrn'},
+  {k:'radius',    nm:'径補正使用N',      col:'#8296A6', sev:'info'}
+];
+
+/* 検出結果（スクショの実データに寄せる：G43.4=2件、N番号重複=2件、他0件） */
+var HITS = [
+  {k:'tcp',  line:872, val:'G43.4', msg:'TCP指令を検出'},
+  {k:'tcp',  line:929, val:'G43.4', msg:'TCP指令を検出'},
+  {k:'dupn', line:20,  val:'N1',    msg:'N番号が重複（863行と）'},
+  {k:'dupn', line:863, val:'N1',    msg:'N番号が重複（20行と）'}
+];
+
+var TOTAL_LINES = 995;
+
+/* 原文（表示ぶんのみ。実際は995行） */
+var SRC = [
+  [12,'','M46'],[13,'','M246'],[14,'','G28U0'],[15,'','G28V0W0'],[16,'','M1'],
+  [17,'c','(????????)'],[18,'c','(????????)'],[19,'',''],
+  [20,'n','N1'],[21,'c','(S50-DCLNN R0.8)'],[22,'','G54'],[23,'','G49'],[24,'','T2001'],
+  [25,'','G361B-45.D1.'],[26,'','T2002'],[27,'','M301'],[28,'c','(???)'],[29,'','M69'],
+  [30,'','M595'],[31,'','M303'],[32,'','M46'],[33,'','G43H1'],[34,'','G97S995M3'],
+  [35,'','G99G18'],[36,'','G0Y0'],[37,'','Z0.8'],[38,'','X32.'],[39,'','M484'],
+  [40,'','G50S1500'],[41,'','G96S30'],[42,'','G1X-1.6F0.2'],[43,'','X1.228Z2.214'],
+  [44,'','G0Z2.914'],[45,'','X32.'],[46,'','G0Z5.'],[47,'','X40.'],[48,'','M9'],
+  [49,'','G0Z3.728'],[50,'','X28.'],[51,'','G1Z-20.F0.25'],[52,'','X30.'],
+  [53,'','G0Z5.'],[54,'','M5'],[55,'','M69'],[56,'','G1Z-63.5F0.3'],[57,'','G0Z10.'],
+  [58,'','M30']
+];
+
+var $ = function(s){ return document.querySelector(s); };
+var selLine = null;
+
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+  });
+}
+function grpOf(k){ var g=null; GROUPS.forEach(function(x){ if(x.k===k) g=x; }); return g; }
+function hitsOf(k){ return HITS.filter(function(h){ return h.k===k; }); }
+function sevOfLine(no){
+  var s=null;
+  HITS.forEach(function(h){
+    if(h.line!==no) return;
+    var g=grpOf(h.k); if(!g) return;
+    if(g.sev==='err') s='err';
+    else if(g.sev==='wrn' && s!=='err') s='wrn';
+  });
+  return s;
+}
+
+/* NCシンタックス */
+function hi(t){
+  var s=esc(t);
+  s=s.replace(/(\([^)]*\))/g,'<span class="cm">$1</span>');
+  s=s.replace(/\b(O\d+)/g,'<span class="o_">$1</span>');
+  s=s.replace(/\b(N\d+)\b/g,'<span class="n_">$1</span>');
+  s=s.replace(/\b(G-?\d+(?:\.\d+)?)/g,'<span class="g_">$1</span>');
+  s=s.replace(/\b(M-?\d+)/g,'<span class="m_">$1</span>');
+  s=s.replace(/\b(S-?\d+(?:\.\d+)?)/g,'<span class="s_">$1</span>');
+  s=s.replace(/\b(F-?\d*\.?\d+)/g,'<span class="f_">$1</span>');
+  s=s.replace(/\b(T\d+)/g,'<span class="t_">$1</span>');
+  s=s.replace(/\b([HD]\d+)/g,'<span class="h_">$1</span>');
+  s=s.replace(/([XYZUVWQ]-?\d*\.?\d+)/g,'<span class="ax">$1</span>');
+  return s;
+}
+
+/* ---- 判定帯 ---- */
+function renderVerdict(){
+  var err=0, wrn=0;
+  HITS.forEach(function(h){
+    var g=grpOf(h.k); if(!g) return;
+    if(g.sev==='err') err++;
+    else if(g.sev==='wrn') wrn++;
+  });
+  var v=$('#verdict');
+  if(err>0){ v.className='verdict ng'; $('#vt').textContent='NG'; $('#vs').textContent='危険箇所あり'; }
+  else if(wrn>0){ v.className='verdict wn'; $('#vt').textContent='WRN'; $('#vs').textContent='軽度の警告'; }
+  else { v.className='verdict ok'; $('#vt').textContent='OK'; $('#vs').textContent='問題なし'; }
+  $('#tErr').textContent='ERR '+err;
+  $('#tWrn').textContent='WRN '+wrn;
+  $('#tLine').textContent=TOTAL_LINES+' L';
+}
+
+/* ---- ゼロ件は畳んで1行に、検出ありだけ目次に展開 ---- */
+function renderToc(){
+  var zeros=[], hasAny=false;
+  var html='';
+  GROUPS.forEach(function(g){
+    var hs=hitsOf(g.k);
+    if(hs.length===0){ zeros.push(g); return; }
+    hasAny=true;
+    var glyph = g.sev==='err' ? '✕' : (g.sev==='wrn' ? '▲' : '·');
+    html += '<div class="grp open" data-k="'+g.k+'">'
+      + '<div class="grp-h">'
+      +   '<span class="cv">▶</span>'
+      +   '<span class="sw" style="background:'+g.col+'"></span>'
+      +   '<span class="gl" style="color:'+g.col+'">'+glyph+'</span>'
+      +   '<span class="nm">'+esc(g.nm)+'</span>'
+      +   '<span class="ct" style="color:'+g.col+'">'+hs.length+'</span>'
+      + '</div><div class="items">'
+      + hs.map(function(h){
+          return '<div class="it" data-line="'+h.line+'">'
+            + '<span class="ln">'+h.line+'</span>'
+            + '<span class="vl" style="color:'+g.col+'">'+esc(h.val)+'</span>'
+            + '<span class="ms">'+esc(h.msg)+'</span></div>';
+        }).join('')
+      + '</div></div>';
+  });
+
+  $('#zeros').innerHTML = zeros.length
+    ? zeros.map(function(g){ return '<span class="z"><i>✔</i>'+esc(g.nm)+'</span>'; }).join('')
+    : '';
+  $('#zeros').style.display = zeros.length ? 'flex' : 'none';
+
+  $('#toc').innerHTML = hasAny ? html
+    : '<div class="clean"><div class="big">✔ ALL CLEAR</div>検出された問題はありません</div>';
+}
+
+/* ---- 原文 ---- */
+function renderCode(){
+  $('#code').innerHTML = SRC.map(function(r){
+    var no=r[0], kind=r[1], txt=r[2];
+    var sev=sevOfLine(no);
+    var cls='cl';
+    if(selLine===no) cls+=' cur';
+    else if(sev==='err') cls+=' err';
+    else if(sev==='wrn') cls+=' wrn';
+    if(kind==='n') cls+=' nhead';
+    return '<div class="'+cls+'" data-line="'+no+'">'
+      + '<span class="g">'+no+'</span><span>'+hi(txt)+'</span></div>';
+  }).join('');
+}
+
+/* ---- ミニマップ：995行の分布を一望 ---- */
+function renderMini(){
+  var h=[];
+  /* Nブロックの頭は薄い青の目盛りに */
+  [20,120,240,380,500,620,740,863,940].forEach(function(n){
+    h.push('<i class="n" style="top:'+(n/TOTAL_LINES*100)+'%"></i>');
+  });
+  HITS.forEach(function(x){
+    var g=grpOf(x.k);
+    var c = g.sev==='err' ? 'e' : (g.sev==='wrn' ? 'w' : 'n');
+    h.push('<i class="'+c+'" style="top:'+(x.line/TOTAL_LINES*100)+'%"></i>');
+  });
+  /* 表示中の窓 */
+  var top=12/TOTAL_LINES*100, ht=(58-12)/TOTAL_LINES*100;
+  h.push('<div class="vp" style="top:'+top+'%;height:'+Math.max(ht,1.5)+'%"></div>');
+  $('#mini').innerHTML=h.join('');
+}
+
+/* ---- 選択＆ジャンプ ---- */
+function jump(no){ selectLine(no); }
+function selectLine(no){
+  selLine=no;
+  renderCode();
+  $('#stSel').textContent='行 '+no;
+  var el=document.querySelector('.cl[data-line="'+no+'"]');
+  if(el && el.scrollIntoView) el.scrollIntoView({block:'center'});
+  var its=document.querySelectorAll('.it');
+  for(var i=0;i<its.length;i++){
+    its[i].className='it'+(its[i].getAttribute('data-line')==String(no)?' sel':'');
+  }
+  /* BLOCK INFO をそれっぽく切り替え（モック） */
+  if(no>=863){ $('#bN').textContent='N1'; $('#bTool').textContent='(2本目のN1)'; }
+  else { $('#bN').textContent='N1'; $('#bTool').textContent='S50-DCLNN R0.8'; }
+}
+function toggleLim(){
+  var l=$('#limits');
+  l.className = l.className.indexOf('open')>=0 ? 'limits' : 'limits open';
+}
+
+/* ---- イベント ---- */
+$('#toc').addEventListener('click',function(e){
+  var it=e.target.closest?e.target.closest('.it'):null;
+  if(it){ selectLine(parseInt(it.getAttribute('data-line'),10)); return; }
+  var h=e.target.closest?e.target.closest('.grp-h'):null;
+  if(h){
+    var g=h.parentNode;
+    g.className = g.className.indexOf('open')>=0
+      ? g.className.replace(' open','') : g.className+' open';
+  }
+});
+$('#code').addEventListener('click',function(e){
+  var l=e.target.closest?e.target.closest('.cl'):null;
+  if(l) selectLine(parseInt(l.getAttribute('data-line'),10));
+});
+$('#mini').addEventListener('click',function(e){
+  var rect=this.getBoundingClientRect();
+  var ratio=(e.clientY-rect.top)/rect.height;
+  var target=Math.round(ratio*TOTAL_LINES);
+  /* 近い検出へ寄せる */
+  var best=null,bd=1e9;
+  HITS.forEach(function(h){ var d=Math.abs(h.line-target); if(d<bd){bd=d;best=h;} });
+  if(best && bd<60) selectLine(best.line);
+});
+
+renderVerdict(); renderToc(); renderCode(); renderMini();
+</script>
+</body>
+</html>
