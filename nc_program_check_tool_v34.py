@@ -33,7 +33,7 @@ FG_HEADER = "#FFFFFF"
 FG_SUB = "#A8CCEA"
 ACCENT = "#22D3C5"
 ACCENT_DARK = "#1BA89D"
-TEXT_MAIN = "#DEE7EE"
+TEXT_MAIN = "#FFFFFF"
 TEXT_MUTED = "#8296A6"
 INPUT_BG = "#080C11"
 RESULT_BG = "#080C11"
@@ -1379,19 +1379,20 @@ class NcCheckApp:
         input_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
         result_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
 
-        # 画面幅から初期幅を計算（BLOCK INFOはやや狭く、N目次を広め、原文は広め、結果はやや狭く）
+        # 画面幅から初期幅を計算（N目次・BLOCK INFOはやや狭く、原文は広め、結果はやや狭く）
         try:
             sw = self.root.winfo_screenwidth()
         except tk.TclError:
             sw = 1920
         unit = max(200, int((sw - 40) / 5))  # 5等分の1ユニット
+        # 表示順: N番号目次 → BLOCK INFO → NCプログラム → チェック結果
+        body.add(n_index_panel, stretch="always", width=int(unit * 0.8), minsize=150)
         body.add(block_info_panel, stretch="always", width=int(unit * 0.85), minsize=210)
-        body.add(n_index_panel, stretch="always", width=int(unit * 0.95), minsize=160)
         body.add(input_panel, stretch="always", width=int(unit * 2.0), minsize=300)
         body.add(result_panel, stretch="always", width=int(unit * 1.4), minsize=280)
 
-        self._build_block_info_panel(block_info_panel)
         self._build_n_index_panel(n_index_panel)
+        self._build_block_info_panel(block_info_panel)
         self._build_input_panel(input_panel)
         self._build_result_panel(result_panel)
 
@@ -1443,14 +1444,14 @@ class NcCheckApp:
         editor_frame = tk.Frame(parent, bg=BG_PANEL, padx=0, pady=0)
         editor_frame.pack(fill="both", expand=True)
 
-        # 行番号ガター + 本文 + スクロールバー を横並び配置
-        editor_inner = tk.Frame(editor_frame, bg=INPUT_BG, relief="solid", bd=1,
+        # 行番号ガター + 本文 + スクロールバー を横並び配置（他ペインと同じグレー背景に統一）
+        editor_inner = tk.Frame(editor_frame, bg=BG_PANEL, relief="solid", bd=1,
                                 highlightthickness=1, highlightbackground=BORDER,
                                 highlightcolor=ACCENT)
         editor_inner.pack(fill="both", expand=True)
 
         # 行番号エリアのコンテナ（ガター本体 + 右端アクセントライン）
-        gutter_frame = tk.Frame(editor_inner, bg="#101720")
+        gutter_frame = tk.Frame(editor_inner, bg=BG_PANEL)
         gutter_frame.pack(side="left", fill="y")
 
         # 行番号Text（表示専用・編集不可・選択不可）
@@ -1461,7 +1462,7 @@ class NcCheckApp:
             pady=12,
             takefocus=0,
             font=("Consolas", 11),
-            bg="#0B0F14",  # 本文と統一して完全な黒
+            bg=BG_PANEL,
             fg="#3A6478",  # マトリクス残像グリーン
             relief="flat",
             bd=0,
@@ -1469,9 +1470,9 @@ class NcCheckApp:
             wrap=tk.NONE,
             cursor="arrow",
             state="disabled",
-            selectbackground="#0B0F14",  # 選択時も色変えない（選択させない演出）
+            selectbackground=BG_PANEL,  # 選択時も色変えない（選択させない演出）
             selectforeground="#3A6478",
-            inactiveselectbackground="#0B0F14",
+            inactiveselectbackground=BG_PANEL,
         )
         self.linenumber_text.pack(side="left", fill="y")
 
@@ -1528,7 +1529,7 @@ class NcCheckApp:
             wrap=tk.NONE,
             undo=True,
             font=("Consolas", 11),
-            bg=INPUT_BG,
+            bg=BG_PANEL,
             fg=TEXT_MAIN,
             insertbackground=ACCENT,   # カーソルも蛍光グリーンに
             relief="flat",
@@ -1570,7 +1571,7 @@ class NcCheckApp:
         self.linenumber_text.bind("<Button-4>", _on_wheel_linenumber)
         self.linenumber_text.bind("<Button-5>", _on_wheel_linenumber)
 
-        self.input_text.tag_configure("current_line_bg", background="#141B24")
+        self.input_text.tag_configure("current_line_bg", background="#232F3D")
         self.input_text.tag_configure("warn_line_highlight", background="#2A2008")
         self.input_text.tag_configure("error_line_highlight", background=ERROR_LINE_BG)
         self.input_text.tag_configure("jump_highlight", background=JUMP_LINE_BG)
@@ -1957,6 +1958,7 @@ class NcCheckApp:
                             activebackground=ACCENT, command=canvas.yview)
         vbar.pack(side="right", fill="y")
         canvas.configure(yscrollcommand=vbar.set)
+        self._n_index_canvas = canvas
 
         self._n_index_inner = tk.Frame(canvas, bg=BG_PANEL)
         inner_window = canvas.create_window((0, 0), window=self._n_index_inner, anchor="nw")
@@ -1969,17 +1971,23 @@ class NcCheckApp:
             canvas.itemconfigure(inner_window, width=event.width)
         canvas.bind("<Configure>", _on_canvas_configure)
 
-        def _on_wheel(event):
-            if event.delta:
-                canvas.yview_scroll(int(-event.delta / 120), "units")
-            else:
-                canvas.yview_scroll(-1 if getattr(event, "num", 0) == 4 else 1, "units")
-        canvas.bind("<MouseWheel>", _on_wheel)
-        canvas.bind("<Button-4>", _on_wheel)
-        canvas.bind("<Button-5>", _on_wheel)
+        canvas.bind("<MouseWheel>", self._on_n_index_wheel)
+        canvas.bind("<Button-4>", self._on_n_index_wheel)
+        canvas.bind("<Button-5>", self._on_n_index_wheel)
+        self._n_index_inner.bind("<MouseWheel>", self._on_n_index_wheel)
+        self._n_index_inner.bind("<Button-4>", self._on_n_index_wheel)
+        self._n_index_inner.bind("<Button-5>", self._on_n_index_wheel)
 
         self._n_index_item_widgets: dict[int, tuple] = {}
         self._render_n_index()
+
+    def _on_n_index_wheel(self, event) -> None:
+        if not hasattr(self, "_n_index_canvas"):
+            return
+        if event.delta:
+            self._n_index_canvas.yview_scroll(int(-event.delta / 120), "units")
+        else:
+            self._n_index_canvas.yview_scroll(-1 if getattr(event, "num", 0) == 4 else 1, "units")
 
     def _render_n_index(self) -> None:
         """BLOCK INFOと同じキャッシュから、Nブロック一覧をクリック可能な行として並べる"""
@@ -2016,6 +2024,9 @@ class NcCheckApp:
             self._n_index_item_widgets[block_id] = (row, bar, label_col, lbl, ln_lbl)
             for w in (row, bar, label_col, lbl, ln_lbl):
                 w.bind("<Button-1>", lambda _e, ln=info["line_min"]: self.jump_to_input_line(ln))
+                w.bind("<MouseWheel>", self._on_n_index_wheel)
+                w.bind("<Button-4>", self._on_n_index_wheel)
+                w.bind("<Button-5>", self._on_n_index_wheel)
 
     def _refresh_n_index_selection(self) -> None:
         """カーソル位置のNブロックが変わった時、目次側のハイライトだけ軽量に更新"""
