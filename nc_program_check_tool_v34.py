@@ -26,53 +26,53 @@ READ_ENCODINGS = ["utf-8-sig", "utf-8", "cp932", "shift_jis", "latin-1"]
 MODE_TURNING = "ターニング"
 MODE_MILLING = "ミーリング"
 
-BG_APP = "#000000"
-BG_PANEL = "#000000"
-BG_HEADER = "#050505"
-FG_HEADER = "#e0f5e0"
-FG_SUB = "#88aa88"
-ACCENT = "#33ff66"
-ACCENT_DARK = "#22cc55"
-TEXT_MAIN = "#d8f0d8"
-TEXT_MUTED = "#7a9e7a"
-INPUT_BG = "#000000"
-RESULT_BG = "#000000"
-BORDER = "#1a2e1a"
-ERROR_LINE_BG = "#4a1828"
-JUMP_LINE_BG = "#344a12"
+BG_APP = "#0B0F14"
+BG_PANEL = "#131A22"
+BG_HEADER = "#1B4B73"
+FG_HEADER = "#FFFFFF"
+FG_SUB = "#A8CCEA"
+ACCENT = "#22D3C5"
+ACCENT_DARK = "#1BA89D"
+TEXT_MAIN = "#DEE7EE"
+TEXT_MUTED = "#8296A6"
+INPUT_BG = "#080C11"
+RESULT_BG = "#080C11"
+BORDER = "#1E2833"
+ERROR_LINE_BG = "#3A1620"
+JUMP_LINE_BG = "#0C2628"
 
 # 警告系の配色（双方向入替の警告枠など、注意喚起UI用）
-WARNING_BG = "#2a1a08"        # 濃い茶系の背景
-WARNING_BORDER = "#ff9933"    # 警告オレンジ（枠線・タイトル）
-WARNING_TITLE = "#ffcc66"     # タイトル文字（少し明るめ）
-WARNING_TEXT = "#e6d4a8"      # 本文（読みやすい薄い色）
+WARNING_BG = "#241A08"        # 濃い琥珀系の背景
+WARNING_BORDER = "#FBBF24"    # 警告アンバー（枠線・タイトル）
+WARNING_TITLE = "#FDE68A"     # タイトル文字（少し明るめ）
+WARNING_TEXT = "#E6D4A8"      # 本文（読みやすい薄い色）
 
-# シンタックスハイライト色（Ghost Protocol — ミリタリーHUD配色）
+# シンタックスハイライト色（TC Suite調 — ネイビー地に映えるHUD配色）
 SYNTAX_COLORS: list[tuple[str, str, str]] = [
     # (タグ名, 正規表現, 文字色)
-    ("hl_comment", r"\([^)]*\)", "#6a7a6a"),                          # コメント: オリーブグレー（視認性UP）
-    ("hl_n_number", r"\bN\d+\b", "#f0d060"),                          # N番号: HUDアンバー（明るく）
-    ("hl_o_number", r"\bO\d+", "#f0d060"),                             # O番号: HUDアンバー（明るく）
-    ("hl_g_code", r"G-?(?:\d+(?:\.\d*)?|\.\d+)", "#ff3333"),           # Gコード: 警告レッド
-    ("hl_m_code", r"M-?(?:\d+(?:\.\d*)?|\.\d+)", "#ff6633"),           # Mコード: 警告オレンジ
-    ("hl_s_val", r"S-?(?:\d+(?:\.\d*)?|\.\d+)", "#33ddff"),            # S値: HUDシアン
-    ("hl_f_val", r"F-?(?:\d+(?:\.\d*)?|\.\d+)", "#33ff99"),            # F値: HUDグリーン
-    ("hl_t_val", r"\bT\d+", "#66ccff"),                                # T番号: HUDライトブルー
-    ("hl_h_val", r"\bH\d+", "#88aaff"),                                # H番号: HUDブルー
-    ("hl_x_axis", r"X-?(?:\d+(?:\.\d*)?|\.\d+)", "#33ff66"),          # X軸: ブライトグリーン
-    ("hl_u_axis", r"U-?(?:\d+(?:\.\d*)?|\.\d+)", "#33ff66"),          # U軸: ブライトグリーン
-    ("hl_y_axis", r"Y-?(?:\d+(?:\.\d*)?|\.\d+)", "#22ddaa"),          # Y軸: グリーン→ティール
-    ("hl_v_axis", r"V-?(?:\d+(?:\.\d*)?|\.\d+)", "#22ddaa"),          # V軸: グリーン→ティール
-    ("hl_z_axis", r"Z-?(?:\d+(?:\.\d*)?|\.\d+)", "#33bbee"),          # Z軸: ティール→ブルー
-    ("hl_w_axis", r"W-?(?:\d+(?:\.\d*)?|\.\d+)", "#33bbee"),          # W軸: ティール→ブルー
-    ("hl_c_axis", r"C-?(?:\d+(?:\.\d*)?|\.\d+)", "#55aaff"),          # C軸: ブルー寄り
-    ("hl_b_axis", r"B-?(?:\d+(?:\.\d*)?|\.\d+)", "#6699ff"),          # B軸: ディープブルー
+    ("hl_comment", r"\([^)]*\)", "#5C6E62"),                          # コメント: オリーブグレー（視認性UP）
+    ("hl_n_number", r"\bN\d+\b", "#F0D060"),                          # N番号: HUDアンバー（明るく）
+    ("hl_o_number", r"\bO\d+", "#F0D060"),                             # O番号: HUDアンバー（明るく）
+    ("hl_g_code", r"G-?(?:\d+(?:\.\d*)?|\.\d+)", "#FF6B6B"),           # Gコード: 警告レッド
+    ("hl_m_code", r"M-?(?:\d+(?:\.\d*)?|\.\d+)", "#FF9557"),           # Mコード: 警告オレンジ
+    ("hl_s_val", r"S-?(?:\d+(?:\.\d*)?|\.\d+)", "#3DDDFF"),            # S値: HUDシアン
+    ("hl_f_val", r"F-?(?:\d+(?:\.\d*)?|\.\d+)", "#34D399"),            # F値: HUDグリーン
+    ("hl_t_val", r"\bT\d+", "#66CCFF"),                                # T番号: HUDライトブルー
+    ("hl_h_val", r"\bH\d+", "#88AAFF"),                                # H番号: HUDブルー
+    ("hl_x_axis", r"X-?(?:\d+(?:\.\d*)?|\.\d+)", "#5BE584"),          # X軸: ブライトグリーン
+    ("hl_u_axis", r"U-?(?:\d+(?:\.\d*)?|\.\d+)", "#5BE584"),          # U軸: ブライトグリーン
+    ("hl_y_axis", r"Y-?(?:\d+(?:\.\d*)?|\.\d+)", "#2DDBC0"),          # Y軸: グリーン→ティール
+    ("hl_v_axis", r"V-?(?:\d+(?:\.\d*)?|\.\d+)", "#2DDBC0"),          # V軸: グリーン→ティール
+    ("hl_z_axis", r"Z-?(?:\d+(?:\.\d*)?|\.\d+)", "#3DC7EA"),          # Z軸: ティール→ブルー
+    ("hl_w_axis", r"W-?(?:\d+(?:\.\d*)?|\.\d+)", "#3DC7EA"),          # W軸: ティール→ブルー
+    ("hl_c_axis", r"C-?(?:\d+(?:\.\d*)?|\.\d+)", "#5FA8F5"),          # C軸: ブルー寄り
+    ("hl_b_axis", r"B-?(?:\d+(?:\.\d*)?|\.\d+)", "#7C93FF"),          # B軸: ディープブルー
 ]
 
 RESULT_STYLE_MAP = {
     "section_heading": {
-        "background": "#142814",
-        "foreground": "#aaffaa",
+        "background": "#15324A",
+        "foreground": "#CFE6F7",
         "font": ("Yu Gothic UI", 11, "bold"),
         "spacing1": 10,
         "spacing3": 4,
@@ -80,33 +80,33 @@ RESULT_STYLE_MAP = {
         "lmargin2": 6,
     },
     "program_number": {
-        "background": "#0e1a0e",
-        "foreground": "#e0f5e0",
+        "background": "#10161F",
+        "foreground": "#FFFFFF",
         "font": ("Consolas", 12, "bold"),
         "spacing3": 6,
         "lmargin1": 6,
         "lmargin2": 6,
     },
-    "summary_overspeed": {"background": "#2a0e0e", "foreground": "#ffaaaa", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "summary_overfeed": {"background": "#2a1e08", "foreground": "#f0d878", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "summary_tcp": {"background": "#0e1a2a", "foreground": "#aaccff", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "summary_decimal_error": {"background": "#0e2218", "foreground": "#88eebb", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "summary_radius": {"background": "#0e1e0e", "foreground": "#88ffaa", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "summary_tailstock_macro_missing": {"background": "#1f1528", "foreground": "#d7b3ff", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "summary_duplicate_n": {"background": "#1a2030", "foreground": "#aaccee", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "finding_overspeed": {"background": "#3a1010", "foreground": "#ffcccc", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "finding_overfeed": {"background": "#3a2a0a", "foreground": "#ffee99", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "finding_tcp": {"background": "#0e1830", "foreground": "#bbddff", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "finding_decimal_error": {"background": "#102a1a", "foreground": "#99ffcc", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "finding_tailstock_macro_missing": {"background": "#22152f", "foreground": "#e2c6ff", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "finding_default": {"background": "#141e14", "foreground": "#ccddcc", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
-    "block_label": {"background": "#142814", "foreground": "#aaeebb", "font": ("Consolas", 11, "bold"), "spacing1": 8, "spacing3": 2, "lmargin1": 6, "lmargin2": 6},
-    "tool_t": {"background": "#0e180e", "foreground": "#88ddff", "font": ("Consolas", 11, "bold"), "lmargin1": 14, "lmargin2": 14},
-    "tool_name": {"background": "#0c140c", "foreground": "#d8f0d8", "lmargin1": 14, "lmargin2": 14},
-    "offset_h": {"background": "#0e1a12", "foreground": "#77ddee", "lmargin1": 14, "lmargin2": 14},
-    "radius_notice": {"background": "#0e2210", "foreground": "#77ff99", "font": ("Yu Gothic UI", 10, "bold"), "lmargin1": 14, "lmargin2": 14},
-    "duplicate_n_notice": {"background": "#102030", "foreground": "#99ccee", "font": ("Yu Gothic UI", 10, "bold"), "lmargin1": 14, "lmargin2": 14},
-    "empty_notice": {"background": "#141e14", "foreground": "#bbddbb", "lmargin1": 10, "lmargin2": 10},
+    "summary_overspeed": {"background": "#301019", "foreground": "#FFC2CE", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "summary_overfeed": {"background": "#2A2008", "foreground": "#FDE9A8", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "summary_tcp": {"background": "#0F1D2E", "foreground": "#BBDDFF", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "summary_decimal_error": {"background": "#0E241C", "foreground": "#8FF0C7", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "summary_radius": {"background": "#101E16", "foreground": "#8FE8B8", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "summary_tailstock_macro_missing": {"background": "#221530", "foreground": "#D9C2FF", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "summary_duplicate_n": {"background": "#16202E", "foreground": "#B7D4F0", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "finding_overspeed": {"background": "#3A121C", "foreground": "#FFD0DA", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "finding_overfeed": {"background": "#362A0C", "foreground": "#FDE9A8", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "finding_tcp": {"background": "#12233A", "foreground": "#CFE6F7", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "finding_decimal_error": {"background": "#123328", "foreground": "#7FF0CB", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "finding_tailstock_macro_missing": {"background": "#241A34", "foreground": "#DCC4FF", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "finding_default": {"background": "#141B24", "foreground": "#C7D4DE", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "block_label": {"background": "#142433", "foreground": "#A9E4DB", "font": ("Consolas", 11, "bold"), "spacing1": 8, "spacing3": 2, "lmargin1": 6, "lmargin2": 6},
+    "tool_t": {"background": "#101B26", "foreground": "#88DDFF", "font": ("Consolas", 11, "bold"), "lmargin1": 14, "lmargin2": 14},
+    "tool_name": {"background": "#10161F", "foreground": "#DEE7EE", "lmargin1": 14, "lmargin2": 14},
+    "offset_h": {"background": "#101E28", "foreground": "#77DDEE", "lmargin1": 14, "lmargin2": 14},
+    "radius_notice": {"background": "#0E2620", "foreground": "#5BE584", "font": ("Yu Gothic UI", 10, "bold"), "lmargin1": 14, "lmargin2": 14},
+    "duplicate_n_notice": {"background": "#14273A", "foreground": "#9CCBEF", "font": ("Yu Gothic UI", 10, "bold"), "lmargin1": 14, "lmargin2": 14},
+    "empty_notice": {"background": "#141B24", "foreground": "#C7D4DE", "lmargin1": 10, "lmargin2": 10},
 }
 
 
@@ -990,10 +990,10 @@ class ThresholdEntry(tk.Frame):
     """回転数・送りの判定上限を入力するエントリー"""
 
     def __init__(self, master: tk.Misc, title: str, default_value: float, on_change) -> None:
-        super().__init__(master, bg="#0a150a", bd=1, relief="solid")
+        super().__init__(master, bg="#101720", bd=1, relief="solid")
         self.configure(padx=12, pady=10)
         self._on_change = on_change
-        tk.Label(self, text=title, bg="#0a150a", fg=TEXT_MUTED,
+        tk.Label(self, text=title, bg="#101720", fg=TEXT_MUTED,
                  font=("Yu Gothic UI", 9)).pack(anchor="w")
         self.var = tk.StringVar(value=str(int(default_value)))
         self.entry = tk.Entry(
@@ -1029,53 +1029,53 @@ class StatusBanner(tk.Frame):
     # 状態ごとの色・文言マップ
     # (bg, fg, title_en, title_ja, accent)
     _STATES = {
-        "idle":     ("#0a150a", "#4a7a4a", "● STANDBY",   "待機中 / チェック未実行", "#1a3a1a"),
-        "ok":       ("#0a1f0a", "#66ff88", "■ ALL GREEN", "異常なし / NO THREATS",    "#33ff66"),
-        "caution":  ("#1f1a08", "#ffd633", "▲ CAUTION",   "軽度の警告",                "#ffaa00"),
-        "warning":  ("#1f0f06", "#ff9933", "⚠ WARNING",   "危険を検出",          "#ff6600"),
-        "critical": ("#1f0608", "#ff3355", "☠ CRITICAL",  "重大な異常 / CRITICAL",    "#ff0033"),
+        "idle":     ("#101720", "#4A6478", "● STANDBY",   "待機中 / チェック未実行", "#1E2833"),
+        "ok":       ("#0E241C", "#34D399", "■ ALL GREEN", "異常なし / NO THREATS",    "#22D3C5"),
+        "caution":  ("#2A2008", "#FBBF24", "▲ CAUTION",   "軽度の警告",                "#F5A623"),
+        "warning":  ("#301A10", "#FF9557", "⚠ WARNING",   "危険を検出",          "#FF7A3D"),
+        "critical": ("#301019", "#FB5E7E", "☠ CRITICAL",  "重大な異常 / CRITICAL",    "#FF3D5C"),
     }
 
     def __init__(self, master: tk.Misc) -> None:
-        super().__init__(master, bg="#0a150a", bd=0, highlightthickness=0)
+        super().__init__(master, bg="#101720", bd=0, highlightthickness=0)
         self._blink_job: str | None = None
         self._blink_frame = 0
 
         # 外枠（斜線ストライプっぽく見せるための二重枠）
-        self._outer = tk.Frame(self, bg="#0a150a", bd=2, relief="ridge",
-                               highlightthickness=2, highlightbackground="#1a3a1a")
+        self._outer = tk.Frame(self, bg="#101720", bd=2, relief="ridge",
+                               highlightthickness=2, highlightbackground="#1E2833")
         self._outer.pack(fill="x", expand=True)
 
         # 内側レイアウト：左に大きな状態表示、右に装甲板カウンター
-        inner = tk.Frame(self._outer, bg="#0a150a", padx=14, pady=10)
+        inner = tk.Frame(self._outer, bg="#101720", padx=14, pady=10)
         inner.pack(fill="x", expand=True)
         inner.grid_columnconfigure(0, weight=1)
         inner.grid_columnconfigure(1, weight=0)
 
         # 左側：タイトル（大きい）+ サブ（日本語併記）
         self._title_label = tk.Label(
-            inner, text="● STANDBY", bg="#0a150a", fg="#4a7a4a",
+            inner, text="● STANDBY", bg="#101720", fg="#4A6478",
             font=("Consolas", 18, "bold"), anchor="w",
         )
         self._title_label.grid(row=0, column=0, sticky="w")
 
         self._subtitle_label = tk.Label(
-            inner, text="待機中 / チェック未実行", bg="#0a150a", fg="#6a8a6a",
+            inner, text="待機中 / チェック未実行", bg="#101720", fg="#6A8494",
             font=("Yu Gothic UI", 10), anchor="w",
         )
         self._subtitle_label.grid(row=1, column=0, sticky="w", pady=(2, 0))
 
         # 右側：装甲板カウンター
-        counter_frame = tk.Frame(inner, bg="#050a05", bd=1, relief="solid",
-                                 highlightthickness=1, highlightbackground="#1a3a1a")
+        counter_frame = tk.Frame(inner, bg="#080C11", bd=1, relief="solid",
+                                 highlightthickness=1, highlightbackground="#1E2833")
         counter_frame.grid(row=0, column=1, rowspan=2, sticky="e", padx=(12, 0))
 
-        counter_inner = tk.Frame(counter_frame, bg="#050a05", padx=10, pady=6)
+        counter_inner = tk.Frame(counter_frame, bg="#080C11", padx=10, pady=6)
         counter_inner.pack()
 
         self._counter_label = tk.Label(
             counter_inner, text="[ ERR: 000 / WRN: 000 / LINES: 0000 ]",
-            bg="#050a05", fg="#4a7a4a",
+            bg="#080C11", fg="#4A6478",
             font=("Consolas", 11, "bold"),
         )
         self._counter_label.pack()
@@ -1263,9 +1263,9 @@ class NcCheckApp:
             self._load_file_from_path(path)
 
     def _make_action_button(self, master: tk.Misc, text: str, command, primary: bool = False) -> tk.Button:
-        bg = ACCENT if primary else "#142014"
-        fg = "#050a05" if primary else TEXT_MAIN
-        active_bg = ACCENT_DARK if primary else "#1e301e"
+        bg = ACCENT if primary else "#141B24"
+        fg = "#080C11" if primary else TEXT_MAIN
+        active_bg = ACCENT_DARK if primary else "#1F2B3A"
         return tk.Button(
             master,
             text=text,
@@ -1304,10 +1304,10 @@ class NcCheckApp:
         # 右側: 読込ファイル情報
         header_right = tk.Frame(header, bg=BG_HEADER)
         header_right.pack(side="right", fill="y", padx=(20, 0))
-        path_chip = tk.Frame(header_right, bg="#0a150a", bd=1, relief="solid", padx=12, pady=8)
+        path_chip = tk.Frame(header_right, bg="#101720", bd=1, relief="solid", padx=12, pady=8)
         path_chip.pack(side="right")
-        tk.Label(path_chip, text="読込ファイル", bg="#0a150a", fg=TEXT_MUTED, font=("Yu Gothic UI", 9)).pack(anchor="w")
-        tk.Label(path_chip, textvariable=self.path_var, bg="#0a150a", fg=TEXT_MAIN,
+        tk.Label(path_chip, text="読込ファイル", bg="#101720", fg=TEXT_MUTED, font=("Yu Gothic UI", 9)).pack(anchor="w")
+        tk.Label(path_chip, textvariable=self.path_var, bg="#101720", fg=TEXT_MAIN,
                  font=("Yu Gothic UI", 10), anchor="w", justify="left",
                  wraplength=420).pack(anchor="w", fill="x")
 
@@ -1329,8 +1329,8 @@ class NcCheckApp:
         self._font_size = 11
         font_frame = tk.Frame(actions, bg=BG_PANEL)
         font_frame.pack(side="left")
-        btn_kw = {"font": ("Yu Gothic UI", 9, "bold"), "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": TEXT_MAIN,
+        btn_kw = {"font": ("Yu Gothic UI", 9, "bold"), "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": TEXT_MAIN,
                   "relief": "solid", "bd": 1, "padx": 6, "pady": 1, "cursor": "hand2"}
         tk.Button(font_frame, text="A-", command=self._font_decrease, **btn_kw).pack(side="left", padx=(0, 4))
         self._font_size_label = tk.Label(font_frame, text="11pt", bg=BG_PANEL, fg=TEXT_MUTED,
@@ -1360,15 +1360,15 @@ class NcCheckApp:
         self._build_result_panel(result_panel)
 
         # 検索バー（常時表示）
-        self._search_bar = tk.Frame(self.root, bg="#111e11", bd=1, relief="solid", padx=10, pady=6)
+        self._search_bar = tk.Frame(self.root, bg="#101720", bd=1, relief="solid", padx=10, pady=6)
         self._search_bar.pack(fill="x", padx=12, pady=(6, 0))
 
-        tk.Label(self._search_bar, text="検索:", bg="#111e11", fg=TEXT_MAIN,
+        tk.Label(self._search_bar, text="検索:", bg="#101720", fg=TEXT_MAIN,
                  font=("Yu Gothic UI", 10)).pack(side="left", padx=(0, 6))
 
         self._search_entry = tk.Entry(
             self._search_bar, textvariable=self._search_var,
-            font=("Consolas", 11), bg="#080e08", fg=TEXT_MAIN,
+            font=("Consolas", 11), bg="#080C11", fg=TEXT_MAIN,
             insertbackground=TEXT_MAIN, relief="solid", bd=1,
             highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
             width=30,
@@ -1378,23 +1378,23 @@ class NcCheckApp:
         self._search_entry.bind("<Shift-Return>", self._search_prev)
         self._search_entry.bind("<KeyRelease>", self._on_search_changed)
 
-        self._search_count_label = tk.Label(self._search_bar, text="", bg="#111e11", fg=TEXT_MUTED,
+        self._search_count_label = tk.Label(self._search_bar, text="", bg="#101720", fg=TEXT_MUTED,
                                             font=("Yu Gothic UI", 9))
 
-        btn_style = {"font": ("Yu Gothic UI", 9, "bold"), "bg": "#142014", "fg": TEXT_MAIN,
-                     "activebackground": "#1e301e", "activeforeground": TEXT_MAIN,
+        btn_style = {"font": ("Yu Gothic UI", 9, "bold"), "bg": "#141B24", "fg": TEXT_MAIN,
+                     "activebackground": "#1F2B3A", "activeforeground": TEXT_MAIN,
                      "relief": "solid", "bd": 1, "padx": 8, "pady": 2, "cursor": "hand2"}
 
         tk.Button(self._search_bar, text="次へ", command=self._search_next, **btn_style).pack(side="left", padx=(0, 4))
         tk.Button(self._search_bar, text="前へ", command=self._search_prev, **btn_style).pack(side="left", padx=(0, 4))
         self._search_count_label.pack(side="left", padx=(6, 0))
 
-        self.input_text.tag_configure("search_highlight", background="#2a4a0e", foreground="#ccff88")
-        self.input_text.tag_configure("search_current", background="#44aa22", foreground="#0a1a0a")
+        self.input_text.tag_configure("search_highlight", background="#1B3A36", foreground="#A7F3D0")
+        self.input_text.tag_configure("search_current", background="#1F8F86", foreground="#101720")
 
-        status_bar = tk.Frame(self.root, bg="#0a150a", bd=1, relief="solid", padx=12, pady=8)
+        status_bar = tk.Frame(self.root, bg="#101720", bd=1, relief="solid", padx=12, pady=8)
         status_bar.pack(fill="x", padx=12, pady=(10, 12))
-        tk.Label(status_bar, textvariable=self.status_var, bg="#0a150a", fg=TEXT_MAIN, anchor="w", justify="left", font=("Yu Gothic UI", 10)).pack(fill="x")
+        tk.Label(status_bar, textvariable=self.status_var, bg="#101720", fg=TEXT_MAIN, anchor="w", justify="left", font=("Yu Gothic UI", 10)).pack(fill="x")
 
     def _build_input_panel(self, parent: tk.Frame) -> None:
         header = tk.Frame(parent, bg=BG_PANEL, padx=14, pady=10)
@@ -1418,7 +1418,7 @@ class NcCheckApp:
         editor_inner.pack(fill="both", expand=True)
 
         # 行番号エリアのコンテナ（ガター本体 + 右端アクセントライン）
-        gutter_frame = tk.Frame(editor_inner, bg="#0a1a0a")
+        gutter_frame = tk.Frame(editor_inner, bg="#101720")
         gutter_frame.pack(side="left", fill="y")
 
         # 行番号Text（表示専用・編集不可・選択不可）
@@ -1429,17 +1429,17 @@ class NcCheckApp:
             pady=12,
             takefocus=0,
             font=("Consolas", 11),
-            bg="#000000",  # 本文と統一して完全な黒
-            fg="#3a7a4a",  # マトリクス残像グリーン
+            bg="#0B0F14",  # 本文と統一して完全な黒
+            fg="#3A6478",  # マトリクス残像グリーン
             relief="flat",
             bd=0,
             highlightthickness=0,
             wrap=tk.NONE,
             cursor="arrow",
             state="disabled",
-            selectbackground="#000000",  # 選択時も色変えない（選択させない演出）
-            selectforeground="#3a7a4a",
-            inactiveselectbackground="#000000",
+            selectbackground="#0B0F14",  # 選択時も色変えない（選択させない演出）
+            selectforeground="#3A6478",
+            inactiveselectbackground="#0B0F14",
         )
         self.linenumber_text.pack(side="left", fill="y")
 
@@ -1447,21 +1447,21 @@ class NcCheckApp:
         self.linenumber_text.tag_configure("ln_right", justify="right")
         self.linenumber_text.tag_configure(
             "ln_n_block",
-            foreground="#f0d060",     # HUDアンバー（N番号のシンタックス色と合わせる）
-            background="#2a3318",     # アンバー背景（黒上で浮くように）
+            foreground="#F0D060",     # HUDアンバー（N番号のシンタックス色と合わせる）
+            background="#2A2008",     # アンバー背景（黒上で浮くように）
             font=("Consolas", 11, "bold"),
             justify="right",
         )
         self.linenumber_text.tag_configure(
             "ln_current",
             foreground=ACCENT,        # 毒々しい蛍光グリーン
-            background="#1a3322",     # 黒上でも識別できる緑系
+            background="#123A38",     # 黒上でも識別できる緑系
             justify="right",
         )
         self.linenumber_text.tag_configure(
             "ln_error",
-            foreground="#ff3355",     # 警告レッド
-            background="#3a1525",     # 黒上で浮く血だまり
+            foreground="#FB5E7E",     # 警告レッド
+            background="#3A1620",     # 黒上で浮く血だまり
             justify="right",
         )
         # 優先度：error > current > n_block > right
@@ -1475,7 +1475,7 @@ class NcCheckApp:
 
         # 縦スクロールバー（本文用）
         self._input_vbar = tk.Scrollbar(editor_inner, orient="vertical",
-                                        bg=BG_PANEL, troughcolor="#0a150a",
+                                        bg=BG_PANEL, troughcolor="#101720",
                                         activebackground=ACCENT)
         self._input_vbar.pack(side="right", fill="y")
 
@@ -1493,9 +1493,9 @@ class NcCheckApp:
             highlightthickness=0,
             padx=12,
             pady=12,
-            selectbackground="#3a6a44",        # 選択色（明るい緑、現在行ハイライトと差をつける）
-            selectforeground="#ffffff",         # 選択文字を白で強調
-            inactiveselectbackground="#3a6a44",
+            selectbackground="#1F5A54",        # 選択色（明るい緑、現在行ハイライトと差をつける）
+            selectforeground="#FFFFFF",         # 選択文字を白で強調
+            inactiveselectbackground="#1F5A54",
         )
         self.input_text.pack(side="left", fill="both", expand=True)
 
@@ -1526,7 +1526,7 @@ class NcCheckApp:
         self.linenumber_text.bind("<Button-4>", _on_wheel_linenumber)
         self.linenumber_text.bind("<Button-5>", _on_wheel_linenumber)
 
-        self.input_text.tag_configure("current_line_bg", background="#1a2a1a")
+        self.input_text.tag_configure("current_line_bg", background="#141B24")
         self.input_text.tag_configure("error_line_highlight", background=ERROR_LINE_BG)
         self.input_text.tag_configure("jump_highlight", background=JUMP_LINE_BG)
 
@@ -1737,11 +1737,11 @@ class NcCheckApp:
             padx=12,
             pady=12,
             cursor="arrow",
-            selectbackground="#1a4a2a",
+            selectbackground="#144A46",
         )
         self.output_text.pack(fill="both", expand=True)
-        self.output_text.tag_configure("heading", font=("Consolas", 11, "bold"), foreground="#88ffbb")
-        self.output_text.tag_configure("jump_link", foreground="#88ffcc", underline=True)
+        self.output_text.tag_configure("heading", font=("Consolas", 11, "bold"), foreground="#8FE8B8")
+        self.output_text.tag_configure("jump_link", foreground="#8FF0C7", underline=True)
         for style_name, style_kwargs in RESULT_STYLE_MAP.items():
             self.output_text.tag_configure(style_name, **style_kwargs)
 
@@ -1759,8 +1759,8 @@ class NcCheckApp:
         tk.Button(
             title_row, text="更新", command=self.run_check,
             font=("Yu Gothic UI", 9, "bold"),
-            bg="#1a3a22", fg=ACCENT,
-            activebackground="#1e301e", activeforeground=ACCENT,
+            bg="#123A38", fg=ACCENT,
+            activebackground="#1F2B3A", activeforeground=ACCENT,
             relief="solid", bd=1, padx=10, pady=2,
             cursor="hand2",
         ).pack(side="right")
@@ -1779,8 +1779,8 @@ class NcCheckApp:
             footer, text="● 自動更新 ON",
             command=self._toggle_auto_refresh,
             font=("Yu Gothic UI", 9, "bold"),
-            bg="#1a3a22", fg=ACCENT,
-            activebackground="#1e301e", activeforeground=ACCENT,
+            bg="#123A38", fg=ACCENT,
+            activebackground="#1F2B3A", activeforeground=ACCENT,
             relief="solid", bd=1, padx=10, pady=3,
             cursor="hand2", anchor="w",
         )
@@ -1789,7 +1789,7 @@ class NcCheckApp:
         # 状態別注意書き（ON/OFFで切り替え）
         self._auto_refresh_note = tk.Label(
             footer, text="",
-            bg=BG_PANEL, fg="#d8a050",
+            bg=BG_PANEL, fg="#E0AE55",
             font=("Yu Gothic UI", 8),
             wraplength=240, justify="left",
         )
@@ -1804,7 +1804,7 @@ class NcCheckApp:
         canvas = tk.Canvas(content_wrap, bg=BG_PANEL, highlightthickness=0, bd=0)
         canvas.pack(side="left", fill="both", expand=True)
         vbar = tk.Scrollbar(content_wrap, orient="vertical",
-                            bg=BG_PANEL, troughcolor="#0a150a",
+                            bg=BG_PANEL, troughcolor="#101720",
                             activebackground=ACCENT, command=canvas.yview)
         vbar.pack(side="right", fill="y")
         canvas.configure(yscrollcommand=vbar.set)
@@ -1856,24 +1856,24 @@ class NcCheckApp:
         if self._auto_refresh_enabled:
             self._auto_refresh_btn.configure(
                 text="● 自動更新 ON",
-                bg="#1a3a22", fg=ACCENT,
-                activebackground="#1e301e", activeforeground=ACCENT,
+                bg="#123A38", fg=ACCENT,
+                activebackground="#1F2B3A", activeforeground=ACCENT,
             )
             self._auto_refresh_note.configure(
                 text="※ 編集後 約1秒で自動更新されます\n"
                      "　 動作が重い・煩わしい時は停止してください",
-                fg="#d8a050",
+                fg="#E0AE55",
             )
         else:
             self._auto_refresh_btn.configure(
                 text="○ 自動更新 OFF",
-                bg="#2a1a1a", fg="#cc8866",
-                activebackground="#3a2020", activeforeground="#ddaa88",
+                bg="#301019", fg="#C97C8A",
+                activebackground="#452030", activeforeground="#E0A0AE",
             )
             self._auto_refresh_note.configure(
                 text="※ 自動更新 停止中\n"
                      "　 更新ボタンを押すか自動更新をONにしてください",
-                fg="#cc8866",
+                fg="#C97C8A",
             )
 
     def _show_block_info_placeholder(self, message: str = "▶ チェック実行後に表示されます") -> None:
@@ -1898,21 +1898,21 @@ class NcCheckApp:
 
         # N番号大きく + 危険件数バッジ
         danger_count = int(info.get("danger_count", 0) or 0)
-        n_card = tk.Frame(self._block_info_inner, bg="#0a1a0a", bd=1, relief="solid",
+        n_card = tk.Frame(self._block_info_inner, bg="#101720", bd=1, relief="solid",
                           highlightthickness=1, highlightbackground=ACCENT_DARK)
         n_card.pack(fill="x", pady=(8, 6))
         # N番号本体
         tk.Label(n_card, text=info.get("n_label", ""),
-                 bg="#0a1a0a", fg=ACCENT,
+                 bg="#101720", fg=ACCENT,
                  font=("Consolas", 22, "bold"), padx=12, pady=8).pack(anchor="center")
         # 危険件数バッジ（あれば）
         if danger_count > 0:
-            badge_color_bg = "#3a1a08"
-            badge_color_fg = "#ff8866"
+            badge_color_bg = "#301A10"
+            badge_color_fg = "#FF9557"
             if danger_count >= 3:
                 # 多いときは強調
-                badge_color_bg = "#4a1a1a"
-                badge_color_fg = "#ff6644"
+                badge_color_bg = "#402030"
+                badge_color_fg = "#FB5E7E"
             badge_frame = tk.Frame(n_card, bg=badge_color_bg,
                                     highlightthickness=1, highlightbackground=badge_color_fg)
             badge_frame.pack(pady=(0, 6), padx=10, fill="x")
@@ -1948,12 +1948,12 @@ class NcCheckApp:
 
     def _make_info_row(self, parent: tk.Frame, label: str, value: str) -> None:
         """ラベル：値 の1行をカード風に表示"""
-        row = tk.Frame(parent, bg="#0a150a", bd=1, relief="solid",
+        row = tk.Frame(parent, bg="#101720", bd=1, relief="solid",
                        highlightthickness=0)
         row.pack(fill="x", pady=2)
-        tk.Label(row, text=label, bg="#0a150a", fg=TEXT_MUTED,
+        tk.Label(row, text=label, bg="#101720", fg=TEXT_MUTED,
                  font=("Yu Gothic UI", 9), width=8, anchor="w", padx=8, pady=4).pack(side="left")
-        tk.Label(row, text=value, bg="#0a150a", fg=TEXT_MAIN,
+        tk.Label(row, text=value, bg="#101720", fg=TEXT_MAIN,
                  font=("Consolas", 10), anchor="w",
                  wraplength=160, justify="left", padx=4, pady=4).pack(side="left", fill="x", expand=True)
 
@@ -2277,8 +2277,8 @@ class NcCheckApp:
             return
 
         # スキャンタグ準備（2段階：先頭の明るい帯 + その上の残像）
-        self.input_text.tag_configure("scan_head", background="#1a6a33")
-        self.input_text.tag_configure("scan_trail", background="#0d3a1a")
+        self.input_text.tag_configure("scan_head", background="#178F86")
+        self.input_text.tag_configure("scan_trail", background="#0E2A28")
         # エラータグより下に（演出が結果表示を邪魔しない）
         self.input_text.tag_lower("scan_head")
         self.input_text.tag_lower("scan_trail")
@@ -2914,13 +2914,13 @@ class TplTargetSelector:
         self._n_optionmenu = tk.OptionMenu(self._n_row, self._n_var, self._n_var.get())
         self._n_optionmenu.configure(
             bg=INPUT_BG, fg=ACCENT, font=("Consolas", 10),
-            activebackground="#1a3a22", activeforeground=ACCENT,
+            activebackground="#123A38", activeforeground=ACCENT,
             highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
             relief="solid", bd=1, anchor="w", width=40,
         )
         self._n_optionmenu["menu"].configure(
             bg=INPUT_BG, fg=TEXT_MAIN, font=("Consolas", 10),
-            activebackground="#1a3a22", activeforeground=ACCENT,
+            activebackground="#123A38", activeforeground=ACCENT,
         )
         self._n_optionmenu.pack(side="left", fill="x", expand=True)
 
@@ -3085,8 +3085,8 @@ class FindReplaceDialog(tk.Toplevel):
                 tab_bar, text=label,
                 command=lambda k=key: self._switch_tab(k),
                 font=("Yu Gothic UI", 10, "bold"),
-                bg="#142014", fg=TEXT_MUTED,
-                activebackground="#1e301e", activeforeground=ACCENT,
+                bg="#141B24", fg=TEXT_MUTED,
+                activebackground="#1F2B3A", activeforeground=ACCENT,
                 relief="solid", bd=1, padx=14, pady=4, cursor="hand2",
             )
             btn.pack(side="left", padx=(0, 4))
@@ -3116,8 +3116,8 @@ class FindReplaceDialog(tk.Toplevel):
         close_frame = tk.Frame(outer, bg=BG_PANEL)
         close_frame.pack(fill="x", pady=(8, 0))
         btn_kw = {"font": ("Yu Gothic UI", 10, "bold"),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 14, "pady": 4,
                   "cursor": "hand2"}
         tk.Button(close_frame, text="閉じる", command=self._on_close,
@@ -3136,9 +3136,9 @@ class FindReplaceDialog(tk.Toplevel):
         # ボタンの見た目更新（アクティブタブを明るく）
         for key, btn in self._tab_buttons.items():
             if key == tab_key:
-                btn.configure(bg="#1a3a22", fg=ACCENT)
+                btn.configure(bg="#123A38", fg=ACCENT)
             else:
-                btn.configure(bg="#142014", fg=TEXT_MUTED)
+                btn.configure(bg="#141B24", fg=TEXT_MUTED)
         self._current_tab.set(tab_key)
 
     # =========================================================================
@@ -3301,8 +3301,8 @@ class FindReplaceDialog(tk.Toplevel):
         tk.Button(opt_frame, text="🔧 ビルダー",
                   command=self._open_regex_builder_for_simple,
                   font=("Yu Gothic UI", 9),
-                  bg="#142014", fg=ACCENT,
-                  activebackground="#1e301e", activeforeground=ACCENT,
+                  bg="#141B24", fg=ACCENT,
+                  activebackground="#1F2B3A", activeforeground=ACCENT,
                   relief="solid", bd=1, padx=8, pady=1,
                   cursor="hand2").pack(side="left", padx=(0, 16))
         tk.Checkbutton(opt_frame, text="大文字小文字を区別", variable=self._case_var,
@@ -3330,8 +3330,8 @@ class FindReplaceDialog(tk.Toplevel):
                 text="▶ 範囲指定（任意）",
                 command=self._toggle_range_panel,
                 font=("Yu Gothic UI", 9, "bold"),
-                bg="#142014", fg=ACCENT,
-                activebackground="#1e301e", activeforeground=ACCENT,
+                bg="#141B24", fg=ACCENT,
+                activebackground="#1F2B3A", activeforeground=ACCENT,
                 relief="solid", bd=1, padx=10, pady=2, cursor="hand2",
                 anchor="w",
             )
@@ -3381,12 +3381,12 @@ class FindReplaceDialog(tk.Toplevel):
         btn_frame.pack(fill="x", pady=(4, 0))
 
         btn_kw = {"font": ("Yu Gothic UI", 10, "bold"),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 14, "pady": 4,
                   "cursor": "hand2"}
         btn_kw_primary = dict(btn_kw)
-        btn_kw_primary["bg"] = "#1a3a22"
+        btn_kw_primary["bg"] = "#123A38"
         btn_kw_primary["fg"] = ACCENT
 
         tk.Button(btn_frame, text="次を検索", command=self.find_next,
@@ -3433,8 +3433,8 @@ class FindReplaceDialog(tk.Toplevel):
         tk.Button(row, text="🔧 ビルダー",
                   command=lambda k=key: self._open_regex_builder_for_range(k),
                   font=("Yu Gothic UI", 9),
-                  bg="#142014", fg=ACCENT,
-                  activebackground="#1e301e", activeforeground=ACCENT,
+                  bg="#141B24", fg=ACCENT,
+                  activebackground="#1F2B3A", activeforeground=ACCENT,
                   relief="solid", bd=1, padx=8, pady=1,
                   cursor="hand2").pack(side="left")
         return ent
@@ -3595,7 +3595,7 @@ class FindReplaceDialog(tk.Toplevel):
                 list_inner, text=f"  {label}",
                 command=lambda tid=tpl_id: self._select_template(tid),
                 font=("Yu Gothic UI", 9), bg=BG_PANEL, fg=TEXT_MAIN,
-                activebackground="#1a3a22", activeforeground=ACCENT,
+                activebackground="#123A38", activeforeground=ACCENT,
                 relief="flat", bd=0, anchor="w", padx=8, pady=2, cursor="hand2",
             )
             btn.pack(fill="x", pady=1)
@@ -3629,8 +3629,8 @@ class FindReplaceDialog(tk.Toplevel):
 
         # 操作ボタン群（新規／更新）
         btn_kw = {"font": ("Yu Gothic UI", 9, "bold"),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 8, "pady": 3,
                   "cursor": "hand2"}
 
@@ -3775,8 +3775,8 @@ class FindReplaceDialog(tk.Toplevel):
         add_btn = tk.Button(parent, text="＋ ステップ追加",
                             command=self._macro_open_step_add_dialog,
                             font=("Yu Gothic UI", 10, "bold"),
-                            bg="#142014", fg=ACCENT,
-                            activebackground="#1e301e", activeforeground=ACCENT,
+                            bg="#141B24", fg=ACCENT,
+                            activebackground="#1F2B3A", activeforeground=ACCENT,
                             relief="solid", bd=1, padx=14, pady=4, cursor="hand2")
         add_btn.pack(fill="x", pady=(0, 8))
 
@@ -3810,18 +3810,18 @@ class FindReplaceDialog(tk.Toplevel):
 
         # ログ用タグ設定
         self._macro_log_text.tag_configure("ok", foreground=ACCENT)
-        self._macro_log_text.tag_configure("warn", foreground="#f0d060")
-        self._macro_log_text.tag_configure("err", foreground="#ff6666")
+        self._macro_log_text.tag_configure("warn", foreground="#F0D060")
+        self._macro_log_text.tag_configure("err", foreground="#FB5E7E")
         self._macro_log_text.tag_configure("info", foreground=TEXT_MUTED)
-        self._macro_log_text.tag_configure("step", foreground="#33ddff")
+        self._macro_log_text.tag_configure("step", foreground="#3DDDFF")
 
         # 実行ボタン群
         btn_row = tk.Frame(parent, bg=BG_PANEL)
         btn_row.pack(fill="x", pady=(4, 0))
 
         btn_kw = {"font": ("Yu Gothic UI", 10, "bold"),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 12, "pady": 4,
                   "cursor": "hand2"}
 
@@ -3832,8 +3832,8 @@ class FindReplaceDialog(tk.Toplevel):
         tk.Button(btn_row, text="▶ 実行",
                   command=self._macro_run_execute,
                   font=("Yu Gothic UI", 10, "bold"),
-                  bg="#1a3a22", fg=ACCENT,
-                  activebackground="#246030", activeforeground=ACCENT,
+                  bg="#123A38", fg=ACCENT,
+                  activebackground="#175E56", activeforeground=ACCENT,
                   relief="solid", bd=1, padx=12, pady=4,
                   cursor="hand2").pack(side="left", padx=(0, 4))
 
@@ -3883,7 +3883,7 @@ class FindReplaceDialog(tk.Toplevel):
                 self._macro_list_inner, text=f"  {display_name}",
                 command=lambda p=fpath: self._macro_load_from_file(p),
                 font=("Yu Gothic UI", 9), bg=BG_PANEL, fg=TEXT_MAIN,
-                activebackground="#1a3a22", activeforeground=ACCENT,
+                activebackground="#123A38", activeforeground=ACCENT,
                 relief="flat", bd=0, anchor="w", padx=8, pady=2, cursor="hand2",
             )
             btn.pack(fill="x", pady=1)
@@ -4017,8 +4017,8 @@ class FindReplaceDialog(tk.Toplevel):
 
         # 操作ボタン群（右寄せ）
         btn_kw = {"font": ("Yu Gothic UI", 9),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "flat", "bd": 0, "padx": 6, "pady": 0,
                   "cursor": "hand2"}
 
@@ -4028,8 +4028,8 @@ class FindReplaceDialog(tk.Toplevel):
                   **btn_kw).pack(side="right", padx=1)
         tk.Button(inner, text="✕", command=lambda i=idx: self._macro_step_delete(i),
                   font=("Yu Gothic UI", 9),
-                  bg="#142014", fg="#ff6666",
-                  activebackground="#3a1a1a", activeforeground="#ff8888",
+                  bg="#141B24", fg="#FB5E7E",
+                  activebackground="#3A1620", activeforeground="#FF93A8",
                   relief="flat", bd=0, padx=6, pady=0,
                   cursor="hand2").pack(side="right", padx=1)
         tk.Button(inner, text="✎", command=lambda i=idx: self._macro_step_edit(i),
@@ -4454,7 +4454,7 @@ class FindReplaceDialog(tk.Toplevel):
         # 全ボタンの色を戻す
         for tid, btn in self._template_buttons.items():
             if tid == tpl_id:
-                btn.configure(bg="#1a3a22", fg=ACCENT)
+                btn.configure(bg="#123A38", fg=ACCENT)
             else:
                 btn.configure(bg=BG_PANEL, fg=TEXT_MAIN)
 
@@ -4534,8 +4534,8 @@ class FindReplaceDialog(tk.Toplevel):
         row.pack(fill="x", pady=(16, 0))
         btn_kw_primary = {
             "font": ("Yu Gothic UI", 10, "bold"),
-            "bg": "#1a3a22", "fg": ACCENT,
-            "activebackground": "#1e301e", "activeforeground": ACCENT,
+            "bg": "#123A38", "fg": ACCENT,
+            "activebackground": "#1F2B3A", "activeforeground": ACCENT,
             "relief": "solid", "bd": 1, "padx": 14, "pady": 4,
             "cursor": "hand2",
         }
@@ -4695,8 +4695,8 @@ class FindReplaceDialog(tk.Toplevel):
         sel_btn_row = tk.Frame(outer, bg=BG_PANEL)
         sel_btn_row.pack(fill="x", pady=(0, 6))
         sel_btn_kw = {"font": ("Yu Gothic UI", 9, "bold"),
-                      "bg": "#142014", "fg": TEXT_MAIN,
-                      "activebackground": "#1e301e", "activeforeground": ACCENT,
+                      "bg": "#141B24", "fg": TEXT_MAIN,
+                      "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                       "relief": "solid", "bd": 1, "padx": 10, "pady": 2,
                       "cursor": "hand2"}
 
@@ -4717,18 +4717,18 @@ class FindReplaceDialog(tk.Toplevel):
         )
         preview_text.pack(side="left", fill="both", expand=True)
         vbar = tk.Scrollbar(text_frame, orient="vertical",
-                            bg=BG_PANEL, troughcolor="#0a150a",
+                            bg=BG_PANEL, troughcolor="#101720",
                             activebackground=ACCENT, command=preview_text.yview)
         vbar.pack(side="right", fill="y")
         preview_text.configure(yscrollcommand=vbar.set)
 
         # タグ設定
-        preview_text.tag_configure("preview_idx",     foreground="#88ccff", font=("Consolas", 10, "bold"))
+        preview_text.tag_configure("preview_idx",     foreground="#6CB6FF", font=("Consolas", 10, "bold"))
         preview_text.tag_configure("preview_label",   foreground=TEXT_MUTED, font=("Consolas", 9))
-        preview_text.tag_configure("preview_before",  foreground="#ff8866", background="#2a1010")
-        preview_text.tag_configure("preview_after",   foreground="#88ff99", background="#0e2010")
-        preview_text.tag_configure("preview_off_before", foreground="#666666")
-        preview_text.tag_configure("preview_off_after",  foreground="#666666")
+        preview_text.tag_configure("preview_before",  foreground="#FF9557", background="#301019")
+        preview_text.tag_configure("preview_after",   foreground="#7FF0CB", background="#0E241C")
+        preview_text.tag_configure("preview_off_before", foreground="#5C6B78")
+        preview_text.tag_configure("preview_off_after",  foreground="#5C6B78")
         preview_text.tag_configure("checkbox_on",  foreground=ACCENT, font=("Consolas", 11, "bold"))
         preview_text.tag_configure("checkbox_off", foreground=TEXT_MUTED, font=("Consolas", 11, "bold"))
 
@@ -4850,12 +4850,12 @@ class FindReplaceDialog(tk.Toplevel):
         btn_row = tk.Frame(outer, bg=BG_PANEL)
         btn_row.pack(fill="x", pady=(12, 0))
         btn_kw = {"font": ("Yu Gothic UI", 10, "bold"),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 14, "pady": 4,
                   "cursor": "hand2"}
         btn_kw_primary = dict(btn_kw)
-        btn_kw_primary["bg"] = "#1a3a22"
+        btn_kw_primary["bg"] = "#123A38"
         btn_kw_primary["fg"] = ACCENT
 
         def _do_execute():
@@ -5981,8 +5981,8 @@ class FindReplaceDialog(tk.Toplevel):
             builder_row, text="🔧 正規表現ビルダーを開く",
             command=self._open_regex_builder_for_line_delete,
             font=("Yu Gothic UI", 9),
-            bg="#142014", fg=ACCENT,
-            activebackground="#1e301e", activeforeground=ACCENT,
+            bg="#141B24", fg=ACCENT,
+            activebackground="#1F2B3A", activeforeground=ACCENT,
             relief="solid", bd=1, padx=10, pady=2, cursor="hand2",
         ).pack(side="left")
 
@@ -6329,7 +6329,7 @@ class FindReplaceDialog(tk.Toplevel):
 
     def _setup_tags(self) -> None:
         """検索ヒット用ハイライトタグを本文側に設定"""
-        self.target.tag_configure("find_match", background="#5a4a08", foreground="#fff099")
+        self.target.tag_configure("find_match", background="#3A2E08", foreground="#FDE9A8")
         # エラー・ジャンプより下、シンタックスより上
         try:
             self.target.tag_raise("find_match")
@@ -6880,7 +6880,7 @@ class MacroStepDialog(tk.Toplevel):
                 list_inner, text=f"  {label}",
                 command=lambda tid=tpl_id: self._select_template(tid),
                 font=("Yu Gothic UI", 9), bg=BG_PANEL, fg=TEXT_MAIN,
-                activebackground="#1a3a22", activeforeground=ACCENT,
+                activebackground="#123A38", activeforeground=ACCENT,
                 relief="flat", bd=0, anchor="w", padx=8, pady=2, cursor="hand2",
             )
             btn.pack(fill="x", pady=1)
@@ -6896,16 +6896,16 @@ class MacroStepDialog(tk.Toplevel):
         btn_row.pack(fill="x", pady=(10, 0))
 
         btn_kw = {"font": ("Yu Gothic UI", 10, "bold"),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 14, "pady": 4,
                   "cursor": "hand2"}
 
         ok_text = "更新" if self.edit_index is not None else "追加"
         tk.Button(btn_row, text=ok_text, command=self._on_ok,
                   font=("Yu Gothic UI", 10, "bold"),
-                  bg="#1a3a22", fg=ACCENT,
-                  activebackground="#246030", activeforeground=ACCENT,
+                  bg="#123A38", fg=ACCENT,
+                  activebackground="#175E56", activeforeground=ACCENT,
                   relief="solid", bd=1, padx=14, pady=4,
                   cursor="hand2").pack(side="right", padx=(4, 0))
         tk.Button(btn_row, text="キャンセル", command=self._on_cancel,
@@ -6914,7 +6914,7 @@ class MacroStepDialog(tk.Toplevel):
         # ステータス
         self._status_var = tk.StringVar(value="")
         tk.Label(outer, textvariable=self._status_var,
-                 bg=BG_PANEL, fg="#ff6666",
+                 bg=BG_PANEL, fg="#FB5E7E",
                  font=("Consolas", 9), anchor="w").pack(fill="x", pady=(6, 0))
 
     def _show_placeholder(self) -> None:
@@ -6930,7 +6930,7 @@ class MacroStepDialog(tk.Toplevel):
         # ボタン色更新
         for tid, btn in self._tpl_buttons.items():
             if tid == tpl_id:
-                btn.configure(bg="#1a3a22", fg=ACCENT)
+                btn.configure(bg="#123A38", fg=ACCENT)
             else:
                 btn.configure(bg=BG_PANEL, fg=TEXT_MAIN)
 
@@ -7119,8 +7119,8 @@ class MacroStepDialog(tk.Toplevel):
             builder_row, text="🔧 正規表現ビルダーを開く",
             command=lambda: self._open_regex_builder_for_field("old", use_regex=True),
             font=("Yu Gothic UI", 9),
-            bg="#142014", fg=ACCENT,
-            activebackground="#1e301e", activeforeground=ACCENT,
+            bg="#141B24", fg=ACCENT,
+            activebackground="#1F2B3A", activeforeground=ACCENT,
             relief="solid", bd=1, padx=10, pady=2, cursor="hand2",
         ).pack(side="left")
 
@@ -7218,8 +7218,8 @@ class MacroStepDialog(tk.Toplevel):
             builder_row, text="🔧 正規表現ビルダーを開く",
             command=lambda: self._open_regex_builder_for_field("pattern", use_regex=True),
             font=("Yu Gothic UI", 9),
-            bg="#142014", fg=ACCENT,
-            activebackground="#1e301e", activeforeground=ACCENT,
+            bg="#141B24", fg=ACCENT,
+            activebackground="#1F2B3A", activeforeground=ACCENT,
             relief="solid", bd=1, padx=10, pady=2, cursor="hand2",
         ).pack(side="left")
 
@@ -7556,10 +7556,10 @@ class MacroPreviewDialog(tk.Toplevel):
 
         # ログタグ
         log_text.tag_configure("ok", foreground=ACCENT)
-        log_text.tag_configure("warn", foreground="#f0d060")
-        log_text.tag_configure("err", foreground="#ff6666")
+        log_text.tag_configure("warn", foreground="#F0D060")
+        log_text.tag_configure("err", foreground="#FB5E7E")
         log_text.tag_configure("info", foreground=TEXT_MUTED)
-        log_text.tag_configure("step", foreground="#33ddff")
+        log_text.tag_configure("step", foreground="#3DDDFF")
 
         # ログ書き込み
         for tag, msg in self.step_logs:
@@ -7586,8 +7586,8 @@ class MacroPreviewDialog(tk.Toplevel):
         btn_row.pack(fill="x", pady=(10, 0))
 
         btn_kw = {"font": ("Yu Gothic UI", 10, "bold"),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 14, "pady": 4,
                   "cursor": "hand2"}
 
@@ -7596,8 +7596,8 @@ class MacroPreviewDialog(tk.Toplevel):
         tk.Button(btn_row, text="▶ このまま実行",
                   command=self._on_ok, state=ok_state,
                   font=("Yu Gothic UI", 10, "bold"),
-                  bg="#1a3a22", fg=ACCENT,
-                  activebackground="#246030", activeforeground=ACCENT,
+                  bg="#123A38", fg=ACCENT,
+                  activebackground="#175E56", activeforeground=ACCENT,
                   relief="solid", bd=1, padx=14, pady=4,
                   cursor="hand2").pack(side="right", padx=(4, 0))
         tk.Button(btn_row, text="キャンセル", command=self._on_cancel,
@@ -7708,7 +7708,7 @@ class MacroPreviewDialog(tk.Toplevel):
         diff_header.grid_columnconfigure(2, weight=1, uniform="diff_cols")
         diff_header.grid_rowconfigure(0, weight=1)
         tk.Label(diff_header, text="変更前",
-                 bg=BG_HEADER, fg="#ff8888",
+                 bg=BG_HEADER, fg="#FF93A8",
                  font=("Consolas", 10, "bold"),
                  anchor="w", padx=8).grid(row=0, column=0, sticky="nsew")
         tk.Frame(diff_header, bg=BORDER).grid(row=0, column=1, sticky="nsew")
@@ -7751,7 +7751,7 @@ class MacroPreviewDialog(tk.Toplevel):
         diff_body.grid_rowconfigure(0, weight=1)
 
         # 変更前列
-        old_text = tk.Text(diff_body, fg="#ff8888", **text_kw)
+        old_text = tk.Text(diff_body, fg="#FF93A8", **text_kw)
         old_text.grid(row=0, column=0, sticky="nsew")
         tk.Frame(diff_body, bg=BORDER).grid(row=0, column=1, sticky="nsew")
 
@@ -7830,11 +7830,11 @@ class MacroPreviewDialog(tk.Toplevel):
         # insert: 元側を空表示、新側を緑背景
         # modify: 通常の左右並び
         for w in (line_text, old_text, new_text):
-            w.tag_configure("delete_old", background="#3a1a1a", foreground="#ff8888",
+            w.tag_configure("delete_old", background="#3A1620", foreground="#FF93A8",
                             overstrike=True)
-            w.tag_configure("delete_new", background="#2a1a1a", foreground=TEXT_MUTED)
-            w.tag_configure("insert_old", background="#1a2a1a", foreground=TEXT_MUTED)
-            w.tag_configure("insert_new", background="#1a3a22", foreground=ACCENT)
+            w.tag_configure("delete_new", background="#301019", foreground=TEXT_MUTED)
+            w.tag_configure("insert_old", background="#141B24", foreground=TEXT_MUTED)
+            w.tag_configure("insert_new", background="#123A38", foreground=ACCENT)
             w.tag_configure("modify_line", foreground=TEXT_MUTED)
 
         # 行ごとに内容を流し込む（kind ごとに表示を変える）
@@ -8032,7 +8032,7 @@ class RegexBuilderDialog(tk.Toplevel):
         # エラー表示
         self._error_var = tk.StringVar(value="")
         tk.Label(left, textvariable=self._error_var,
-                 bg=BG_PANEL, fg="#ff6666",
+                 bg=BG_PANEL, fg="#FB5E7E",
                  font=("Consolas", 9), anchor="w").pack(fill="x", padx=(80, 0))
 
         # ── テスト用文字列 ──
@@ -8043,8 +8043,8 @@ class RegexBuilderDialog(tk.Toplevel):
         test_btn_row = tk.Frame(left, bg=BG_PANEL)
         test_btn_row.pack(fill="x", pady=(0, 4))
         btn_kw = {"font": ("Yu Gothic UI", 9),
-                  "bg": "#142014", "fg": TEXT_MAIN,
-                  "activebackground": "#1e301e", "activeforeground": ACCENT,
+                  "bg": "#141B24", "fg": TEXT_MAIN,
+                  "activebackground": "#1F2B3A", "activeforeground": ACCENT,
                   "relief": "solid", "bd": 1, "padx": 8, "pady": 2,
                   "cursor": "hand2"}
         tk.Button(test_btn_row, text="選択範囲を読込",
@@ -8080,7 +8080,7 @@ class RegexBuilderDialog(tk.Toplevel):
 
         # マッチ箇所のハイライトタグ
         self._test_text.tag_configure("regex_match",
-                                       background="#1a3a22",
+                                       background="#123A38",
                                        foreground=ACCENT)
 
         # テスト文字列が変わったら再マッチ
@@ -8134,14 +8134,14 @@ class RegexBuilderDialog(tk.Toplevel):
         tk.Button(ok_row, text="この正規表現を使う",
                   command=self._on_ok,
                   font=("Yu Gothic UI", 10, "bold"),
-                  bg="#1a3a22", fg=ACCENT,
-                  activebackground="#246030", activeforeground=ACCENT,
+                  bg="#123A38", fg=ACCENT,
+                  activebackground="#175E56", activeforeground=ACCENT,
                   relief="solid", bd=1, padx=14, pady=4,
                   cursor="hand2").pack(side="right", padx=(4, 0))
         tk.Button(ok_row, text="キャンセル", command=self._on_cancel,
                   font=("Yu Gothic UI", 10),
-                  bg="#142014", fg=TEXT_MAIN,
-                  activebackground="#1e301e", activeforeground=ACCENT,
+                  bg="#141B24", fg=TEXT_MAIN,
+                  activebackground="#1F2B3A", activeforeground=ACCENT,
                   relief="solid", bd=1, padx=14, pady=4,
                   cursor="hand2").pack(side="right")
 
@@ -8205,8 +8205,8 @@ class RegexBuilderDialog(tk.Toplevel):
                     row1, text="挿入",
                     command=lambda s=symbol: self._insert_symbol(s),
                     font=("Yu Gothic UI", 9),
-                    bg="#142014", fg=ACCENT,
-                    activebackground="#1e301e", activeforeground=ACCENT,
+                    bg="#141B24", fg=ACCENT,
+                    activebackground="#1F2B3A", activeforeground=ACCENT,
                     relief="solid", bd=1, padx=6, pady=0, cursor="hand2",
                 ).pack(side="left", padx=(0, 6))
 
@@ -8452,7 +8452,7 @@ class SplashScreen(tk.Toplevel):
     def __init__(self, root: tk.Tk) -> None:
         super().__init__(root)
         self.overrideredirect(True)
-        self.configure(bg="#0a0f0a")
+        self.configure(bg="#0B0F14")
         self.attributes("-topmost", True)
 
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
@@ -8460,30 +8460,30 @@ class SplashScreen(tk.Toplevel):
         x, y = (sw - w) // 2, (sh - h) // 2
         self.geometry(f"{w}x{h}+{x}+{y}")
 
-        self.canvas = tk.Canvas(self, bg="#0a0f0a", width=w, height=h,
+        self.canvas = tk.Canvas(self, bg="#0B0F14", width=w, height=h,
                                 bd=0, highlightthickness=0)
         self.canvas.pack()
 
         # 外枠（Ghost Protocolグリーン）
-        self.canvas.create_rectangle(1, 1, w - 1, h - 1, outline="#33ff66", width=1)
+        self.canvas.create_rectangle(1, 1, w - 1, h - 1, outline="#22D3C5", width=1)
 
         # タイトル
         self.canvas.create_text(w // 2, 55, text="NC PROGRAM CHECKER",
-                                font=("Courier", 16, "bold"), fill="#33ff66")
+                                font=("Courier", 16, "bold"), fill="#22D3C5")
         self.canvas.create_text(w // 2, 90,
                                 text="NCプログラム確認ツール",
-                                font=("Helvetica", 13), fill="#7a9e7a")
+                                font=("Helvetica", 13), fill="#8296A6")
         self.canvas.create_text(w // 2, 120, text=APP_TITLE.split()[-1] if " " in APP_TITLE else "",
-                                font=("Courier", 11), fill="#2a4a2a")
+                                font=("Courier", 11), fill="#2A3846")
 
         # プログレスバー
         bar_y, bar_w, bar_h = 160, 280, 4
         bx1 = (w - bar_w) // 2
         bx2 = bx1 + bar_w
         self.canvas.create_rectangle(bx1, bar_y, bx2, bar_y + bar_h,
-                                     fill="#142014", outline="")
+                                     fill="#141B24", outline="")
         self._bar = self.canvas.create_rectangle(bx1, bar_y, bx1, bar_y + bar_h,
-                                                 fill="#33ff66", outline="")
+                                                 fill="#22D3C5", outline="")
         self._bar_x1 = bx1
         self._bar_x2 = bx2
         self._bar_y = bar_y
@@ -8491,12 +8491,12 @@ class SplashScreen(tk.Toplevel):
 
         # ステータス
         self._status = self.canvas.create_text(w // 2, 190, text="初期化中...",
-                                               font=("Courier", 9), fill="#7a9e7a")
+                                               font=("Courier", 9), fill="#8296A6")
 
         # GHOST PROTOCOL
-        self.canvas.create_line(120, 220, 300, 220, fill="#1a2e1a", width=1)
+        self.canvas.create_line(120, 220, 300, 220, fill="#1E2833", width=1)
         self.canvas.create_text(w // 2, 238, text="GHOST PROTOCOL",
-                                font=("Courier", 8), fill="#2a4a2a")
+                                font=("Courier", 8), fill="#2A3846")
 
         # パーティクル
         import math as _math
@@ -8507,7 +8507,7 @@ class SplashScreen(tk.Toplevel):
             py = 20 + (h - 40) * ((hash(str(i + 50)) % 100) / 100)
             size = 1 + hash(str(i + 99)) % 2
             pid = self.canvas.create_oval(px, py, px + size, py + size,
-                                          fill="#33ff66", outline="")
+                                          fill="#22D3C5", outline="")
             self._particles.append((pid, px, py))
 
         self._anim_step = 0
@@ -8520,10 +8520,10 @@ class SplashScreen(tk.Toplevel):
             dx = math.sin(self._anim_step * 0.05 + ox) * 0.5
             dy = math.cos(self._anim_step * 0.04 + oy) * 0.3
             self.canvas.move(pid, dx, dy)
-            g_base = int(80 + 40 * math.sin(self._anim_step * 0.08 + ox))
-            g_base = max(30, min(99, g_base))
-            g_val = min(g_base + 80, 255)
-            color = f"#00{g_val:02x}{g_base:02x}"
+            g_base = int(150 + 40 * math.sin(self._anim_step * 0.08 + ox))
+            g_base = max(120, min(211, g_base))
+            b_val = max(110, min(197, g_base - 14))
+            color = f"#22{g_base:02x}{b_val:02x}"
             try:
                 self.canvas.itemconfig(pid, fill=color)
             except Exception:
