@@ -1374,20 +1374,23 @@ class NcCheckApp:
         body.pack(fill="both", expand=True)
 
         block_info_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
+        n_index_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
         input_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
         result_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
 
-        # 画面幅から比率1:2:2で初期幅を計算
+        # 画面幅から初期幅を計算（BLOCK INFO/N目次はやや狭く、原文/結果を広めに）
         try:
             sw = self.root.winfo_screenwidth()
         except tk.TclError:
             sw = 1920
         unit = max(200, int((sw - 40) / 5))  # 5等分の1ユニット
-        body.add(block_info_panel, stretch="always", width=unit, minsize=240)
-        body.add(input_panel, stretch="always", width=unit * 2, minsize=300)
-        body.add(result_panel, stretch="always", width=unit * 2, minsize=300)
+        body.add(block_info_panel, stretch="always", width=int(unit * 0.72), minsize=190)
+        body.add(n_index_panel, stretch="always", width=int(unit * 0.56), minsize=110)
+        body.add(input_panel, stretch="always", width=int(unit * 2.1), minsize=300)
+        body.add(result_panel, stretch="always", width=int(unit * 1.75), minsize=300)
 
         self._build_block_info_panel(block_info_panel)
+        self._build_n_index_panel(n_index_panel)
         self._build_input_panel(input_panel)
         self._build_result_panel(result_panel)
 
@@ -1939,6 +1942,93 @@ class NcCheckApp:
         # 初期表示（プレースホルダー）
         self._show_block_info_placeholder()
 
+    def _build_n_index_panel(self, parent: tk.Frame) -> None:
+        """N番号ごとの目次。クリックでそのNブロックの先頭行へジャンプする。"""
+        self._make_secbar(parent, "INDEX", "N番号目次")
+
+        content_wrap = tk.Frame(parent, bg=BG_PANEL, padx=0, pady=0)
+        content_wrap.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(content_wrap, bg=BG_PANEL, highlightthickness=0, bd=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        vbar = tk.Scrollbar(content_wrap, orient="vertical",
+                            bg=BG_PANEL, troughcolor="#101720",
+                            activebackground=ACCENT, command=canvas.yview)
+        vbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=vbar.set)
+
+        self._n_index_inner = tk.Frame(canvas, bg=BG_PANEL)
+        inner_window = canvas.create_window((0, 0), window=self._n_index_inner, anchor="nw")
+
+        def _on_inner_configure(_event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        self._n_index_inner.bind("<Configure>", _on_inner_configure)
+
+        def _on_canvas_configure(event):
+            canvas.itemconfigure(inner_window, width=event.width)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        def _on_wheel(event):
+            if event.delta:
+                canvas.yview_scroll(int(-event.delta / 120), "units")
+            else:
+                canvas.yview_scroll(-1 if getattr(event, "num", 0) == 4 else 1, "units")
+        canvas.bind("<MouseWheel>", _on_wheel)
+        canvas.bind("<Button-4>", _on_wheel)
+        canvas.bind("<Button-5>", _on_wheel)
+
+        self._n_index_item_widgets: dict[int, tuple] = {}
+        self._render_n_index()
+
+    def _render_n_index(self) -> None:
+        """BLOCK INFOと同じキャッシュから、Nブロック一覧をクリック可能な行として並べる"""
+        if not hasattr(self, "_n_index_inner"):
+            return
+        for w in self._n_index_inner.winfo_children():
+            w.destroy()
+        self._n_index_item_widgets = {}
+
+        if not getattr(self, "_block_info_cache", None):
+            tk.Label(self._n_index_inner, text="チェック実行後に表示されます",
+                     bg=BG_PANEL, fg=TEXT_MUTED, font=("Yu Gothic UI", 8),
+                     wraplength=100, justify="left").pack(anchor="w", padx=10, pady=14)
+            return
+
+        for block_id in sorted(self._block_info_cache.keys()):
+            info = self._block_info_cache[block_id]
+            selected = (self._current_displayed_label == block_id)
+            row_bg = "#171F29" if selected else BG_PANEL
+            row = tk.Frame(self._n_index_inner, bg=row_bg, cursor="hand2")
+            row.pack(fill="x")
+            bar = tk.Frame(row, bg=(ACCENT if selected else BG_PANEL), width=3)
+            bar.pack(side="left", fill="y")
+            label_col = tk.Frame(row, bg=row_bg)
+            label_col.pack(side="left", fill="x", expand=True, padx=(7, 4), pady=6)
+            lbl = tk.Label(label_col, text=info["n_label"], bg=row_bg,
+                           fg=(ACCENT if selected else TEXT_MAIN),
+                           font=("Consolas", 10, "bold"), anchor="w")
+            lbl.pack(anchor="w")
+            ln_lbl = tk.Label(label_col, text=f"L{info['line_min']}", bg=row_bg,
+                              fg=TEXT_MUTED, font=("Consolas", 7), anchor="w")
+            ln_lbl.pack(anchor="w")
+            self._n_index_item_widgets[block_id] = (row, bar, label_col, lbl, ln_lbl)
+            for w in (row, bar, label_col, lbl, ln_lbl):
+                w.bind("<Button-1>", lambda _e, ln=info["line_min"]: self.jump_to_input_line(ln))
+
+    def _refresh_n_index_selection(self) -> None:
+        """カーソル位置のNブロックが変わった時、目次側のハイライトだけ軽量に更新"""
+        if not hasattr(self, "_n_index_item_widgets"):
+            return
+        for block_id, widgets in self._n_index_item_widgets.items():
+            row, bar, label_col, lbl, ln_lbl = widgets
+            selected = (self._current_displayed_label == block_id)
+            row_bg = "#171F29" if selected else BG_PANEL
+            row.configure(bg=row_bg)
+            bar.configure(bg=(ACCENT if selected else BG_PANEL))
+            label_col.configure(bg=row_bg)
+            lbl.configure(bg=row_bg, fg=(ACCENT if selected else TEXT_MAIN))
+            ln_lbl.configure(bg=row_bg)
+
     def _toggle_auto_refresh(self) -> None:
         """自動更新トグル切替"""
         self._auto_refresh_enabled = not self._auto_refresh_enabled
@@ -2026,24 +2116,33 @@ class NcCheckApp:
                      font=("Yu Gothic UI", 9, "bold"),
                      pady=4).pack()
 
-        # ===== ゲージ：一番よく見る3値を横並びで強調 =====
+        # ===== ゲージ：T番号/H補正は少し大きめに強調表示 =====
         gauges = tk.Frame(self._block_info_inner, bg=BG_PANEL,
                           highlightthickness=1, highlightbackground=BORDER)
-        gauges.pack(fill="x", pady=(0, 8))
+        gauges.pack(fill="x", pady=(0, 4))
         gauge_defs = [
             ("T番号", info.get("t_number", "") or "―"),
             ("H補正", info.get("h_offsets", "") or "―"),
-            ("送り", info.get("feed_list", "") or "―"),
         ]
         for idx, (label, value) in enumerate(gauge_defs):
             cell = tk.Frame(gauges, bg=BG_PANEL)
             cell.grid(row=0, column=idx, sticky="nsew", padx=(1 if idx else 0, 0))
             gauges.grid_columnconfigure(idx, weight=1)
             tk.Label(cell, text=label, bg=BG_PANEL, fg=TEXT_MUTED,
-                     font=("Yu Gothic UI", 8)).pack(pady=(8, 2))
+                     font=("Yu Gothic UI", 8)).pack(pady=(9, 3))
             tk.Label(cell, text=value, bg=BG_PANEL, fg=TEXT_MAIN,
-                     font=("Consolas", 11, "bold"), wraplength=80,
-                     justify="center").pack(pady=(0, 8))
+                     font=("Consolas", 15, "bold"), wraplength=90,
+                     justify="center").pack(pady=(0, 9))
+
+        # ===== 送り：ゲージの下に独立した行として表示 =====
+        feed_gauge = tk.Frame(self._block_info_inner, bg=BG_PANEL,
+                              highlightthickness=1, highlightbackground=BORDER)
+        feed_gauge.pack(fill="x", pady=(0, 8))
+        tk.Label(feed_gauge, text="送り", bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 8)).pack(pady=(8, 2))
+        tk.Label(feed_gauge, text=info.get("feed_list", "") or "―",
+                 bg=BG_PANEL, fg=TEXT_MAIN, font=("Consolas", 11, "bold"),
+                 wraplength=200, justify="center").pack(pady=(0, 8))
 
         # ===== 残り項目をkey-value形式で =====
         rows = [
@@ -2078,6 +2177,7 @@ class NcCheckApp:
         if not program_text.strip():
             self._block_info_cache = {}
             self._block_info_ranges = []
+            self._render_n_index()
             return
 
         lines = program_text.splitlines()
@@ -2138,6 +2238,7 @@ class NcCheckApp:
 
         self._block_info_cache = cache
         self._block_info_ranges = ranges
+        self._render_n_index()
 
         # 現在カーソル位置のブロックを表示
         self._update_block_info_for_current_line(force=True)
@@ -2184,6 +2285,7 @@ class NcCheckApp:
             else:
                 self._show_block_info_placeholder("[N番号外]")
                 self._current_displayed_label = None
+        self._refresh_n_index_selection()
 
     def _get_settings(self) -> ThresholdSettings:
         default = ThresholdSettings()
@@ -2560,6 +2662,7 @@ class NcCheckApp:
         self._block_info_cache = {}
         self._block_info_ranges = []
         self._show_block_info_placeholder("チェック実行後に表示されます")
+        self._render_n_index()
         self._last_toc_groups = None
         self._toc_selected_line = None
         self._render_toc_placeholder("チェック実行後に表示されます")
@@ -2746,6 +2849,7 @@ class NcCheckApp:
         self._block_info_cache = {}
         self._block_info_ranges = []
         self._show_block_info_placeholder("チェック実行後に表示されます")
+        self._render_n_index()
         self._last_toc_groups = None
         self._toc_selected_line = None
         self._render_toc_placeholder("チェック実行後に表示されます")
