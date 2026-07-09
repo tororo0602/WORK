@@ -47,6 +47,13 @@ WARNING_BORDER = "#FBBF24"    # 警告アンバー（枠線・タイトル）
 WARNING_TITLE = "#FDE68A"     # タイトル文字（少し明るめ）
 WARNING_TEXT = "#E6D4A8"      # 本文（読みやすい薄い色）
 
+# v35 判定セマンティックカラー（TC Suite調：OK/WARN/ALERT/INFO/VIOLET）
+OK_COLOR = "#34D399"
+WARN_COLOR = "#FBBF24"
+ALERT_COLOR = "#FB5E7E"
+INFO_COLOR = "#6CB6FF"
+VIOLET_COLOR = "#C08CFF"
+
 # シンタックスハイライト色（TC Suite調 — ネイビー地に映えるHUD配色）
 SYNTAX_COLORS: list[tuple[str, str, str]] = [
     # (タグ名, 正規表現, 文字色)
@@ -108,6 +115,19 @@ RESULT_STYLE_MAP = {
     "duplicate_n_notice": {"background": "#14273A", "foreground": "#9CCBEF", "font": ("Yu Gothic UI", 10, "bold"), "lmargin1": 14, "lmargin2": 14},
     "empty_notice": {"background": "#141B24", "foreground": "#C7D4DE", "lmargin1": 10, "lmargin2": 10},
 }
+
+# v35 右ペイン「目次」用の検査項目グループ定義。
+# kind は Finding.kind（overspeed/overfeed/decimal_error/tailstock_macro_missing/tcp）
+# のほか、SummaryData から集計する duplicate_n / radius_comp_n を含む7種。
+TOC_GROUPS: list[dict] = [
+    {"kind": "overspeed", "label": "回転数超え", "color": ALERT_COLOR, "sev": "err"},
+    {"kind": "overfeed", "label": "送り超え", "color": "#FF9557", "sev": "err"},
+    {"kind": "decimal_error", "label": "小数点間違い", "color": "#F0D060", "sev": "err"},
+    {"kind": "tailstock_macro_missing", "label": "芯押しマクロ忘れ", "color": VIOLET_COLOR, "sev": "err"},
+    {"kind": "tcp", "label": "G43.4 (TCP)", "color": INFO_COLOR, "sev": "wrn"},
+    {"kind": "duplicate_n", "label": "N番号重複", "color": ACCENT, "sev": "wrn"},
+    {"kind": "radius_comp_n", "label": "径補正使用N", "color": TEXT_MUTED, "sev": "info"},
+]
 
 
 @dataclass
@@ -1021,137 +1041,133 @@ class ThresholdEntry(tk.Frame):
             return None
 
 
-class StatusBanner(tk.Frame):
-    """エヴァ風大型警告バナー。
-    エラー件数に応じて色と文言が変化する装甲板カウンター付き。
+class VerdictBand(tk.Frame):
+    """右ペイン最上部の細い判定帯。ランプ＋判定文言＋ERR/WRN/LINES件数のみを表示する。
+    v34のエヴァ風大型バナーに代わる、TC Suite調の控えめな帯。
     """
 
-    # 状態ごとの色・文言マップ
-    # (bg, fg, title_en, title_ja, accent)
+    # state -> (lamp/vt色, vt文言, vs文言)
     _STATES = {
-        "idle":     ("#101720", "#4A6478", "● STANDBY",   "待機中 / チェック未実行", "#1E2833"),
-        "ok":       ("#0E241C", "#34D399", "■ ALL GREEN", "異常なし / NO THREATS",    "#22D3C5"),
-        "caution":  ("#2A2008", "#FBBF24", "▲ CAUTION",   "軽度の警告",                "#F5A623"),
-        "warning":  ("#301A10", "#FF9557", "⚠ WARNING",   "危険を検出",          "#FF7A3D"),
-        "critical": ("#301019", "#FB5E7E", "☠ CRITICAL",  "重大な異常 / CRITICAL",    "#FF3D5C"),
+        "idle":     (TEXT_MUTED, "――", "チェック未実行"),
+        "ok":       (OK_COLOR, "OK", "問題なし"),
+        "wn":       (WARN_COLOR, "WRN", "軽度の警告"),
+        "ng":       (ALERT_COLOR, "NG", "危険箇所あり"),
     }
 
     def __init__(self, master: tk.Misc) -> None:
-        super().__init__(master, bg="#101720", bd=0, highlightthickness=0)
-        self._blink_job: str | None = None
-        self._blink_frame = 0
+        super().__init__(master, bg=INPUT_BG, bd=0, highlightthickness=0)
+        self.configure(padx=13, pady=10)
 
-        # 外枠（斜線ストライプっぽく見せるための二重枠）
-        self._outer = tk.Frame(self, bg="#101720", bd=2, relief="ridge",
-                               highlightthickness=2, highlightbackground="#1E2833")
-        self._outer.pack(fill="x", expand=True)
+        row = tk.Frame(self, bg=INPUT_BG)
+        row.pack(fill="x")
 
-        # 内側レイアウト：左に大きな状態表示、右に装甲板カウンター
-        inner = tk.Frame(self._outer, bg="#101720", padx=14, pady=10)
-        inner.pack(fill="x", expand=True)
-        inner.grid_columnconfigure(0, weight=1)
-        inner.grid_columnconfigure(1, weight=0)
+        self._lamp = tk.Canvas(row, width=10, height=10, bg=INPUT_BG,
+                               highlightthickness=0, bd=0)
+        self._lamp_oval = self._lamp.create_oval(1, 1, 9, 9, fill=TEXT_MUTED, outline="")
+        self._lamp.pack(side="left", padx=(0, 11))
 
-        # 左側：タイトル（大きい）+ サブ（日本語併記）
-        self._title_label = tk.Label(
-            inner, text="● STANDBY", bg="#101720", fg="#4A6478",
-            font=("Consolas", 18, "bold"), anchor="w",
+        self._vt = tk.Label(row, text="――", bg=INPUT_BG, fg=TEXT_MUTED,
+                            font=("Consolas", 15, "bold"))
+        self._vt.pack(side="left")
+        self._vs = tk.Label(row, text="チェック未実行", bg=INPUT_BG, fg=TEXT_MUTED,
+                            font=("Yu Gothic UI", 10))
+        self._vs.pack(side="left", padx=(11, 0))
+
+        tally = tk.Frame(row, bg=INPUT_BG)
+        tally.pack(side="right")
+        self._err_lbl = self._make_chip(tally, "ERR 0", ALERT_COLOR, "#5A2530")
+        self._err_lbl.pack(side="left", padx=(0, 6))
+        self._wrn_lbl = self._make_chip(tally, "WRN 0", WARN_COLOR, "#6E5520")
+        self._wrn_lbl.pack(side="left", padx=(0, 6))
+        self._line_lbl = self._make_chip(tally, "0 L", TEXT_MUTED, BORDER)
+        self._line_lbl.pack(side="left")
+
+    @staticmethod
+    def _make_chip(master: tk.Misc, text: str, fg: str, border: str) -> tk.Label:
+        return tk.Label(
+            master, text=text, bg="#0C1219", fg=fg,
+            font=("Consolas", 9, "bold"), padx=8, pady=3,
+            highlightthickness=1, highlightbackground=border, highlightcolor=border,
         )
-        self._title_label.grid(row=0, column=0, sticky="w")
-
-        self._subtitle_label = tk.Label(
-            inner, text="待機中 / チェック未実行", bg="#101720", fg="#6A8494",
-            font=("Yu Gothic UI", 10), anchor="w",
-        )
-        self._subtitle_label.grid(row=1, column=0, sticky="w", pady=(2, 0))
-
-        # 右側：装甲板カウンター
-        counter_frame = tk.Frame(inner, bg="#080C11", bd=1, relief="solid",
-                                 highlightthickness=1, highlightbackground="#1E2833")
-        counter_frame.grid(row=0, column=1, rowspan=2, sticky="e", padx=(12, 0))
-
-        counter_inner = tk.Frame(counter_frame, bg="#080C11", padx=10, pady=6)
-        counter_inner.pack()
-
-        self._counter_label = tk.Label(
-            counter_inner, text="[ ERR: 000 / WRN: 000 / LINES: 0000 ]",
-            bg="#080C11", fg="#4A6478",
-            font=("Consolas", 11, "bold"),
-        )
-        self._counter_label.pack()
-
-        # 初期状態設定
-        self.set_state("idle", err=0, wrn=0, lines=0)
 
     def set_state(self, state: str, err: int = 0, wrn: int = 0, lines: int = 0) -> None:
-        """状態を指定してバナーを更新。
-        state: 'idle' | 'ok' | 'caution' | 'warning' | 'critical'
-        """
+        """state: 'idle' | 'ok' | 'wn' | 'ng'"""
         if state not in self._STATES:
             state = "idle"
-        bg, fg, title_en, title_ja, accent = self._STATES[state]
+        color, vt_text, vs_text = self._STATES[state]
+        self._lamp.itemconfigure(self._lamp_oval, fill=color)
+        self._vt.configure(text=vt_text, fg=color)
+        self._vs.configure(text=vs_text)
+        self._err_lbl.configure(text=f"ERR {err}")
+        self._wrn_lbl.configure(text=f"WRN {wrn}")
+        self._line_lbl.configure(text=f"{lines} L")
 
-        self._outer.configure(bg=bg, highlightbackground=accent)
-        # 内部フレームも色を追従
-        for w in self._outer.winfo_children():
-            try:
-                w.configure(bg=bg)
-                for ch in w.winfo_children():
-                    # カウンターフレームだけは暗い背景を維持
-                    if ch is self._counter_label.master.master:
-                        continue
-                    try:
-                        ch.configure(bg=bg)
-                    except tk.TclError:
-                        pass
-            except tk.TclError:
-                pass
 
-        self._title_label.configure(text=title_en, bg=bg, fg=fg)
-        self._subtitle_label.configure(text=title_ja, bg=bg, fg=fg)
-        self._counter_label.configure(
-            text=f"[ ERR: {err:03d} / WRN: {wrn:03d} / LINES: {lines:04d} ]",
-            fg=fg,
-        )
+class MiniMap(tk.Canvas):
+    """中央ペイン右端の細いミニマップ。全行の危険(赤)/警告(黄)分布とNブロック先頭を一望し、
+    クリックで一番近い検出行へジャンプする。
+    """
 
-        # 点滅停止（状態変化のたびにリセット）
-        self._stop_blink()
-        # エラー系状態の時のみ点滅
-        if state in ("warning", "critical"):
-            self._start_blink(bg_normal=bg, bg_flash=accent, times=4)
-        elif state == "caution":
-            self._start_blink(bg_normal=bg, bg_flash=accent, times=2)
+    def __init__(self, master: tk.Misc, on_jump, width: int = 18) -> None:
+        super().__init__(master, width=width, bg="#06090D", highlightthickness=0, bd=0,
+                         cursor="hand2")
+        self._on_jump = on_jump
+        self._total_lines = 1
+        self._markers: list[tuple[int, str]] = []  # (line_no, 'err'|'wrn')
+        self._n_starts: list[int] = []
+        self._viewport: tuple[float, float] = (0.0, 1.0)
+        self.bind("<Configure>", lambda _e: self._redraw())
+        self.bind("<Button-1>", self._on_click)
 
-    def _start_blink(self, bg_normal: str, bg_flash: str, times: int) -> None:
-        self._blink_frame = 0
-        self._blink_total = times * 2  # ON/OFF 1ペアで2フレーム
+    def set_data(self, total_lines: int, markers: list[tuple[int, str]], n_starts: list[int]) -> None:
+        self._total_lines = max(1, total_lines)
+        self._markers = markers
+        self._n_starts = n_starts
+        self._redraw()
 
-        def step() -> None:
-            if self._blink_frame >= self._blink_total:
-                # 終了：通常色に戻す
-                try:
-                    self._outer.configure(bg=bg_normal)
-                except tk.TclError:
-                    pass
-                self._blink_job = None
-                return
-            color = bg_flash if self._blink_frame % 2 == 0 else bg_normal
-            try:
-                self._outer.configure(bg=color)
-            except tk.TclError:
-                pass
-            self._blink_frame += 1
-            self._blink_job = self.after(180, step)
+    def set_viewport(self, first: float, last: float) -> None:
+        try:
+            self._viewport = (float(first), float(last))
+        except (TypeError, ValueError):
+            return
+        self._redraw()
 
-        step()
+    def _redraw(self) -> None:
+        self.delete("all")
+        w = self.winfo_width()
+        h = self.winfo_height()
+        if w <= 1 or h <= 1:
+            return
+        total = self._total_lines
+        top = self._viewport[0] * h
+        bottom = max(self._viewport[1] * h, top + 2)
+        self.create_rectangle(0, top, w, bottom, fill="#1B2836", outline="")
+        for n in self._n_starts:
+            y = (n / total) * h
+            self.create_line(2, y, w - 2, y, fill="#3A6478", width=1)
+        for line_no, sev in self._markers:
+            y = (line_no / total) * h
+            if sev == "err":
+                self.create_rectangle(2, y - 1.5, w - 2, y + 1.5, fill=ALERT_COLOR, outline="")
+            else:
+                self.create_rectangle(2, y - 1, w - 2, y + 1, fill=WARN_COLOR, outline="")
 
-    def _stop_blink(self) -> None:
-        if self._blink_job is not None:
-            try:
-                self.after_cancel(self._blink_job)
-            except Exception:
-                pass
-            self._blink_job = None
+    def _on_click(self, event) -> None:
+        h = self.winfo_height()
+        if h <= 1 or not self._markers:
+            return
+        ratio = max(0.0, min(1.0, event.y / h))
+        target = ratio * self._total_lines
+        threshold = max(10, self._total_lines / 15)
+        best_line = None
+        best_dist = None
+        for line_no, _sev in self._markers:
+            dist = abs(line_no - target)
+            if best_dist is None or dist < best_dist:
+                best_dist = dist
+                best_line = line_no
+        if best_line is not None and best_dist is not None and best_dist <= threshold:
+            self._on_jump(best_line)
 
 
 class NcCheckApp:
@@ -1459,19 +1475,30 @@ class NcCheckApp:
             justify="right",
         )
         self.linenumber_text.tag_configure(
+            "ln_warn",
+            foreground=WARN_COLOR,
+            background="#2A2008",
+            justify="right",
+        )
+        self.linenumber_text.tag_configure(
             "ln_error",
             foreground="#FB5E7E",     # 警告レッド
             background="#3A1620",     # 黒上で浮く血だまり
             justify="right",
         )
-        # 優先度：error > current > n_block > right
+        # 優先度：error > warn > current > n_block > right
         self.linenumber_text.tag_raise("ln_n_block", "ln_right")
         self.linenumber_text.tag_raise("ln_current", "ln_n_block")
-        self.linenumber_text.tag_raise("ln_error", "ln_current")
+        self.linenumber_text.tag_raise("ln_warn", "ln_current")
+        self.linenumber_text.tag_raise("ln_error", "ln_warn")
 
         # 右端の縦アクセントライン（ガターと本文の境界）
         gutter_divider = tk.Frame(editor_inner, bg=ACCENT_DARK, width=1)
         gutter_divider.pack(side="left", fill="y")
+
+        # ミニマップ（995行規模でも危険/警告分布を一望できる縦帯。クリックで近い検出行へ）
+        self._minimap = MiniMap(editor_inner, on_jump=self.jump_to_input_line)
+        self._minimap.pack(side="right", fill="y")
 
         # 縦スクロールバー（本文用）
         self._input_vbar = tk.Scrollbar(editor_inner, orient="vertical",
@@ -1501,9 +1528,10 @@ class NcCheckApp:
 
         # 縦スクロール同期：scrollbarのsetは本文→scrollbarの通知、commandはユーザ操作→両方へ
         def _on_textscroll(*args):
-            # input_text の yview 変化 → scrollbar 更新 & 行番号側追従
+            # input_text の yview 変化 → scrollbar 更新 & 行番号側追従 & ミニマップの表示窓
             self._input_vbar.set(*args)
             self.linenumber_text.yview_moveto(args[0])
+            self._minimap.set_viewport(*args)
 
         def _on_scrollbar(*args):
             # scrollbar操作 → 本文と行番号の両方を動かす
@@ -1527,6 +1555,7 @@ class NcCheckApp:
         self.linenumber_text.bind("<Button-5>", _on_wheel_linenumber)
 
         self.input_text.tag_configure("current_line_bg", background="#141B24")
+        self.input_text.tag_configure("warn_line_highlight", background="#2A2008")
         self.input_text.tag_configure("error_line_highlight", background=ERROR_LINE_BG)
         self.input_text.tag_configure("jump_highlight", background=JUMP_LINE_BG)
 
@@ -1586,24 +1615,35 @@ class NcCheckApp:
         ln.configure(state="normal")
         ln.tag_remove("ln_current", "1.0", tk.END)
         ln.tag_remove("ln_error", "1.0", tk.END)
+        ln.tag_remove("ln_warn", "1.0", tk.END)
 
-        # エラー行の集合を取得
-        try:
-            ranges = self.input_text.tag_ranges("error_line_highlight")
-        except tk.TclError:
-            ranges = []
-        error_lines: set[int] = set()
-        for i in range(0, len(ranges), 2):
+        def _lines_from_tag(tag_name: str) -> set[int]:
             try:
-                start_line = int(str(ranges[i]).split(".")[0])
-                end_line = int(str(ranges[i + 1]).split(".")[0])
-                for ln_no in range(start_line, end_line + 1):
-                    error_lines.add(ln_no)
-            except (ValueError, IndexError):
-                pass
+                tag_ranges = self.input_text.tag_ranges(tag_name)
+            except tk.TclError:
+                tag_ranges = []
+            result: set[int] = set()
+            for i in range(0, len(tag_ranges), 2):
+                try:
+                    start_line = int(str(tag_ranges[i]).split(".")[0])
+                    end_line = int(str(tag_ranges[i + 1]).split(".")[0])
+                    for ln_no in range(start_line, end_line + 1):
+                        result.add(ln_no)
+                except (ValueError, IndexError):
+                    pass
+            return result
+
+        # エラー行・警告行の集合を取得（エラー優先）
+        error_lines = _lines_from_tag("error_line_highlight")
+        warn_lines = _lines_from_tag("warn_line_highlight") - error_lines
         for ln_no in error_lines:
             try:
                 ln.tag_add("ln_error", f"{ln_no}.0", f"{ln_no}.end")
+            except tk.TclError:
+                pass
+        for ln_no in warn_lines:
+            try:
+                ln.tag_add("ln_warn", f"{ln_no}.0", f"{ln_no}.end")
             except tk.TclError:
                 pass
 
@@ -1615,7 +1655,7 @@ class NcCheckApp:
         except (tk.TclError, ValueError, IndexError):
             pass
 
-        if cur_line is not None and cur_line not in error_lines:
+        if cur_line is not None and cur_line not in error_lines and cur_line not in warn_lines:
             try:
                 ln.tag_add("ln_current", f"{cur_line}.0", f"{cur_line}.end")
             except tk.TclError:
@@ -1691,59 +1731,130 @@ class NcCheckApp:
         tk.Label(header, text="チェック結果", bg=BG_PANEL, fg=TEXT_MAIN, font=("Yu Gothic UI", 13, "bold")).pack(anchor="w")
         tk.Label(
             header,
-            text="青文字をクリックすると原文へジャンプ。判定上限の変更や本文編集で自動再チェック。",
+            text="項目をクリックすると原文へジャンプ。判定上限の変更や本文編集で自動再チェック。",
             bg=BG_PANEL,
             fg=TEXT_MUTED,
             font=("Yu Gothic UI", 9),
         ).pack(anchor="w", pady=(4, 0))
 
-        # 判定上限入力欄（横並び2つ）
-        threshold_wrap = tk.Frame(parent, bg=BG_PANEL, padx=14)
-        threshold_wrap.pack(fill="x")
-        threshold_grid = tk.Frame(threshold_wrap, bg=BG_PANEL)
-        threshold_grid.pack(fill="x", pady=(0, 8))
+        # ===== 判定は細い帯1本（デカい枠は置かない） =====
+        self._verdict_band = VerdictBand(parent)
+        self._verdict_band.pack(fill="x")
+
+        # ===== ゼロ件は畳んで1行に =====
+        self._zeros_text = tk.Text(
+            parent, height=2, wrap="word", bd=0, highlightthickness=0,
+            bg="#0F151C", fg=TEXT_MUTED, font=("Yu Gothic UI", 9),
+            padx=13, pady=8, cursor="arrow", state="disabled",
+        )
+        self._zeros_text.tag_configure("chk", foreground=OK_COLOR, font=("Consolas", 9, "bold"))
+
+        # ===== 判定上限：折りたたんで最下部に格納 =====
+        default = ThresholdSettings()
+        self._threshold_debounce_id: str | None = None
+
+        limits_wrap = tk.Frame(parent, bg=INPUT_BG, highlightthickness=1, highlightbackground=BORDER)
+        limits_wrap.pack(fill="x", side="bottom")
+
+        self._limits_open = False
+        limits_header = tk.Frame(limits_wrap, bg=INPUT_BG, cursor="hand2")
+        limits_header.pack(fill="x")
+        self._limits_arrow = tk.Label(limits_header, text="▶", bg=INPUT_BG, fg=TEXT_MUTED,
+                                      font=("Consolas", 9), cursor="hand2")
+        self._limits_arrow.pack(side="left", padx=(13, 6), pady=8)
+        tk.Label(limits_header, text="判定上限の設定", bg=INPUT_BG, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 9, "bold"), cursor="hand2").pack(side="left")
+        self._limits_summary = tk.Label(
+            limits_header,
+            text=f"S{int(default.speed_limit)} / F{int(default.feed_limit)}",
+            bg=INPUT_BG, fg=TEXT_MUTED, font=("Consolas", 9), cursor="hand2",
+        )
+        self._limits_summary.pack(side="right", padx=(0, 13))
+        for w in (limits_header, *limits_header.winfo_children()):
+            w.bind("<Button-1>", lambda _e: self._toggle_limits())
+
+        self._limits_body = tk.Frame(limits_wrap, bg=INPUT_BG, padx=13, pady=12)
+        threshold_grid = tk.Frame(self._limits_body, bg=INPUT_BG)
+        threshold_grid.pack(fill="x")
         threshold_grid.grid_columnconfigure(0, weight=1)
         threshold_grid.grid_columnconfigure(1, weight=1)
-
-        self._threshold_debounce_id: str | None = None
-        default = ThresholdSettings()
         self.speed_entry = ThresholdEntry(threshold_grid, "回転数 判定上限 (S)",
                                           default.speed_limit, self._on_threshold_changed)
         self.feed_entry = ThresholdEntry(threshold_grid, "送り 判定上限 (F)",
                                          default.feed_limit, self._on_threshold_changed)
         self.speed_entry.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         self.feed_entry.grid(row=0, column=1, sticky="nsew")
+        # 初期状態は閉じる（bodyは意図的にpackしない）
 
-        # エヴァ風警告バナー（閾値入力の下・結果テキストの上）
-        banner_wrap = tk.Frame(parent, bg=BG_PANEL, padx=14)
-        banner_wrap.pack(fill="x")
-        self.status_banner = StatusBanner(banner_wrap)
-        self.status_banner.pack(fill="x", pady=(0, 8))
+        # ===== 目次本体（スクロール可能・検出ありのグループだけ開いて表示） =====
+        self._toc_wrap = tk.Frame(parent, bg=BG_PANEL)
+        toc_wrap = self._toc_wrap
+        toc_wrap.pack(fill="both", expand=True)
+        toc_canvas = tk.Canvas(toc_wrap, bg=BG_PANEL, highlightthickness=0, bd=0)
+        toc_canvas.pack(side="left", fill="both", expand=True)
+        toc_vbar = tk.Scrollbar(toc_wrap, orient="vertical", bg=BG_PANEL,
+                                troughcolor="#101720", activebackground=ACCENT,
+                                command=toc_canvas.yview)
+        toc_vbar.pack(side="right", fill="y")
+        toc_canvas.configure(yscrollcommand=toc_vbar.set)
 
-        output_frame = tk.Frame(parent, bg=BG_PANEL, padx=14, pady=0)
-        output_frame.pack(fill="both", expand=True)
+        self._toc_inner = tk.Frame(toc_canvas, bg=BG_PANEL)
+        toc_window = toc_canvas.create_window((0, 0), window=self._toc_inner, anchor="nw")
+
+        def _on_toc_inner_configure(_event=None):
+            toc_canvas.configure(scrollregion=toc_canvas.bbox("all"))
+        self._toc_inner.bind("<Configure>", _on_toc_inner_configure)
+
+        def _on_toc_canvas_configure(event):
+            toc_canvas.itemconfigure(toc_window, width=event.width)
+        toc_canvas.bind("<Configure>", _on_toc_canvas_configure)
+
+        def _on_toc_wheel(event):
+            if event.delta:
+                toc_canvas.yview_scroll(int(-event.delta / 120), "units")
+            else:
+                toc_canvas.yview_scroll(-1 if getattr(event, "num", 0) == 4 else 1, "units")
+        toc_canvas.bind("<MouseWheel>", _on_toc_wheel)
+        toc_canvas.bind("<Button-4>", _on_toc_wheel)
+        toc_canvas.bind("<Button-5>", _on_toc_wheel)
+
+        self._toc_group_open: dict[str, bool] = {}
+        self._toc_selected_line: int | None = None
+        self._toc_item_widgets: dict[int, list[tk.Widget]] = {}
+        self._last_toc_groups: list[dict] | None = None
+        self._render_toc_placeholder("▶ チェック実行後に表示されます")
+
+        # ===== 非表示の内部レポートバッファ =====
+        # 旧テキストレポート生成・行エラーハイライト判定・「編集後の初回チェック済み」
+        # 判定など既存ロジックが参照するため保持するが、画面には表示しない。
         self.output_text = ScrolledText(
-            output_frame,
-            wrap=tk.NONE,
-            undo=False,
-            font=("Consolas", 11),
-            bg=RESULT_BG,
-            fg=TEXT_MAIN,
-            relief="solid",
-            bd=1,
-            highlightthickness=1,
-            highlightbackground=BORDER,
-            highlightcolor=ACCENT,
-            padx=12,
-            pady=12,
-            cursor="arrow",
-            selectbackground="#144A46",
+            parent, wrap=tk.NONE, undo=False, font=("Consolas", 11),
+            bg=RESULT_BG, fg=TEXT_MAIN,
         )
-        self.output_text.pack(fill="both", expand=True)
         self.output_text.tag_configure("heading", font=("Consolas", 11, "bold"), foreground="#8FE8B8")
         self.output_text.tag_configure("jump_link", foreground="#8FF0C7", underline=True)
         for style_name, style_kwargs in RESULT_STYLE_MAP.items():
             self.output_text.tag_configure(style_name, **style_kwargs)
+
+    def _toggle_limits(self) -> None:
+        self._limits_open = not self._limits_open
+        if self._limits_open:
+            self._limits_arrow.configure(text="▼")
+            self._limits_body.pack(fill="x")
+        else:
+            self._limits_arrow.configure(text="▶")
+            self._limits_body.pack_forget()
+
+    def _render_toc_placeholder(self, message: str) -> None:
+        if not hasattr(self, "_toc_inner"):
+            return
+        for w in self._toc_inner.winfo_children():
+            w.destroy()
+        self._toc_item_widgets = {}
+        tk.Label(self._toc_inner, text=message, bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 10), wraplength=340, justify="left").pack(
+                     anchor="w", pady=20, padx=13)
+        self._zeros_text.pack_forget()
 
     def _build_block_info_panel(self, parent: tk.Frame) -> None:
         """カーソル位置のNブロック情報をリアルタイム表示するパネル"""
@@ -1890,54 +2001,78 @@ class NcCheckApp:
         self._current_displayed_label = None
 
     def _render_block_info(self, info: dict) -> None:
-        """1ブロック分の情報をカード表示"""
+        """1ブロック分の情報をカード表示。モックの nblock + gauges 構成に合わせ、
+        N番号を大表示 + T番号/H補正/送りをゲージ化し、残りはkey-value行で並べる。
+        """
         if not hasattr(self, "_block_info_inner"):
             return
         for w in self._block_info_inner.winfo_children():
             w.destroy()
 
-        # N番号大きく + 危険件数バッジ
-        danger_count = int(info.get("danger_count", 0) or 0)
-        n_card = tk.Frame(self._block_info_inner, bg="#101720", bd=1, relief="solid",
-                          highlightthickness=1, highlightbackground=ACCENT_DARK)
-        n_card.pack(fill="x", pady=(8, 6))
-        # N番号本体
-        tk.Label(n_card, text=info.get("n_label", ""),
-                 bg="#101720", fg=ACCENT,
-                 font=("Consolas", 22, "bold"), padx=12, pady=8).pack(anchor="center")
+        # ===== Nブロック大表示（N番号 + 工具名 + 行範囲） =====
+        nblock = tk.Frame(self._block_info_inner, bg=BG_PANEL)
+        nblock.pack(fill="x", pady=(10, 0))
+        tk.Label(nblock, text=info.get("n_label", ""),
+                 bg=BG_PANEL, fg=ACCENT,
+                 font=("Consolas", 30, "bold")).pack(anchor="center")
+        tool_name = info.get("tool_name", "") or "(名称なし)"
+        tk.Label(nblock, text=tool_name,
+                 bg=BG_PANEL, fg=TEXT_MAIN,
+                 font=("Consolas", 11, "bold"),
+                 wraplength=240, justify="center").pack(anchor="center", pady=(6, 0))
+        line_min = info.get("line_min")
+        line_max = info.get("line_max")
+        if line_min and line_max:
+            span = line_max - line_min + 1
+            range_text = f"{line_min}行 – {line_max}行 / {span} lines"
+        else:
+            range_text = "―"
+        tk.Label(nblock, text=range_text,
+                 bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Consolas", 9)).pack(anchor="center", pady=(3, 10))
+
         # 危険件数バッジ（あれば）
+        danger_count = int(info.get("danger_count", 0) or 0)
         if danger_count > 0:
             badge_color_bg = "#301A10"
             badge_color_fg = "#FF9557"
             if danger_count >= 3:
-                # 多いときは強調
                 badge_color_bg = "#402030"
-                badge_color_fg = "#FB5E7E"
-            badge_frame = tk.Frame(n_card, bg=badge_color_bg,
+                badge_color_fg = ALERT_COLOR
+            badge_frame = tk.Frame(self._block_info_inner, bg=badge_color_bg,
                                     highlightthickness=1, highlightbackground=badge_color_fg)
-            badge_frame.pack(pady=(0, 6), padx=10, fill="x")
+            badge_frame.pack(pady=(0, 10), padx=0, fill="x")
             tk.Label(badge_frame,
                      text=f"⚠ 危険検出 {danger_count} 件",
                      bg=badge_color_bg, fg=badge_color_fg,
                      font=("Yu Gothic UI", 9, "bold"),
-                     pady=2).pack()
+                     pady=4).pack()
 
-        # 工具名（次に大きい）
-        tool_name = info.get("tool_name", "") or "(名称なし)"
-        tk.Label(self._block_info_inner, text=tool_name,
-                 bg=BG_PANEL, fg=TEXT_MAIN,
-                 font=("Yu Gothic UI", 11, "bold"),
-                 wraplength=240, justify="center").pack(pady=(0, 8))
-
-        # 各項目をkey-value形式で
-        rows = [
+        # ===== ゲージ：一番よく見る3値を横並びで強調 =====
+        gauges = tk.Frame(self._block_info_inner, bg=BG_PANEL,
+                          highlightthickness=1, highlightbackground=BORDER)
+        gauges.pack(fill="x", pady=(0, 8))
+        gauge_defs = [
             ("T番号", info.get("t_number", "") or "―"),
             ("H補正", info.get("h_offsets", "") or "―"),
+            ("送り", info.get("feed_list", "") or "―"),
+        ]
+        for idx, (label, value) in enumerate(gauge_defs):
+            cell = tk.Frame(gauges, bg=BG_PANEL)
+            cell.grid(row=0, column=idx, sticky="nsew", padx=(1 if idx else 0, 0))
+            gauges.grid_columnconfigure(idx, weight=1)
+            tk.Label(cell, text=label, bg=BG_PANEL, fg=TEXT_MUTED,
+                     font=("Yu Gothic UI", 8)).pack(pady=(8, 2))
+            tk.Label(cell, text=value, bg=BG_PANEL, fg=TEXT_MAIN,
+                     font=("Consolas", 11, "bold"), wraplength=80,
+                     justify="center").pack(pady=(0, 8))
+
+        # ===== 残り項目をkey-value形式で =====
+        rows = [
             ("径補正", info.get("radius_comp", "") or "―"),
             ("ワーク座標", info.get("work_coord", "") or "―"),
             ("回転数", info.get("spindle", "") or "―"),
             ("回転方向", info.get("rotation", "") or "―"),
-            ("送り",   info.get("feed_list", "") or "―"),
             ("クーラント", info.get("coolant", "") or "―"),
             ("B軸", info.get("b_axis", "") or "―"),
             ("Z最小",  info.get("z_min_display", "") or "―"),
@@ -2097,35 +2232,55 @@ class NcCheckApp:
         if not program_text.strip():
             return
         settings = self._get_settings()
+        self._update_limits_summary(settings)
         report = build_report(program_text, settings)
-        self._render_report(report)
+        self._on_report_ready(report, program_text)
         self._highlight_all()
         # ブロック情報キャッシュも更新（findings渡して危険件数集計）
         self._refresh_block_info_cache(report.findings)
+
+    def _update_limits_summary(self, settings: ThresholdSettings) -> None:
+        if hasattr(self, "_limits_summary"):
+            self._limits_summary.configure(
+                text=f"S{int(settings.speed_limit)} / F{int(settings.feed_limit)}"
+            )
 
     def _clear_output_jump_tags(self) -> None:
         jump_tags = [tag for tag in self.output_text.tag_names() if tag.startswith("jump_")]
         if jump_tags:
             self.output_text.tag_delete(*jump_tags)
 
-    def _apply_error_highlights(self, error_line_nos: set[int]) -> None:
+    def _apply_error_highlights(self, error_line_nos: set[int], warn_line_nos: set[int] | None = None) -> None:
+        warn_line_nos = warn_line_nos or set()
         self.input_text.tag_remove("error_line_highlight", "1.0", tk.END)
+        self.input_text.tag_remove("warn_line_highlight", "1.0", tk.END)
+        for line_no in sorted(warn_line_nos - error_line_nos):
+            start = f"{line_no}.0"
+            end = f"{line_no}.end"
+            self.input_text.tag_add("warn_line_highlight", start, end)
         for line_no in sorted(error_line_nos):
             start = f"{line_no}.0"
             end = f"{line_no}.end"
             self.input_text.tag_add("error_line_highlight", start, end)
         self.input_text.tag_raise("jump_highlight")
-        # 行番号ガターのエラー行ハイライトも追従
+        # 行番号ガターのエラー/警告行ハイライトも追従
         self._apply_linenumber_highlights()
 
-    def _render_report(self, report: ReportData) -> None:
+    def _render_report(self, report: ReportData, err_lines: set[int] | None = None,
+                       warn_lines: set[int] | None = None) -> None:
+        """チェック結果を内部レポートバッファ(output_text)へ書き出す。
+        画面には表示しないが、旧テキストレポート・保存機能・エラー行判定など
+        既存ロジックが参照するため維持する。
+        err_lines/warn_linesを渡すと、エディタの赤/黄ハイライトはそちらを優先する
+        （目次の7分類ベースの重大度で塗り分けるため）。
+        """
         self.output_text.delete("1.0", tk.END)
         self.output_text.config(cursor="arrow")
         self._clear_output_jump_tags()
-        self._apply_error_highlights(report.error_line_nos)
-
-        # エヴァ風警告バナーの状態更新
-        self._update_status_banner(report)
+        self._apply_error_highlights(
+            err_lines if err_lines is not None else report.error_line_nos,
+            warn_lines,
+        )
 
         for idx, report_line in enumerate(report.lines):
             start_index = self.output_text.index("end-1c")
@@ -2154,34 +2309,216 @@ class NcCheckApp:
             self.output_text.tag_bind(tag_name, "<Enter>", lambda event: self.output_text.config(cursor="hand2"))
             self.output_text.tag_bind(tag_name, "<Leave>", lambda event: self.output_text.config(cursor="arrow"))
 
-    def _update_status_banner(self, report: ReportData) -> None:
-        """チェック結果に基づいてバナーを更新"""
-        if not hasattr(self, "status_banner"):
-            return
-        s = report.summary
-        # ERR: 機械ダメージ直結系
-        err = (s.overspeed_count + s.overfeed_count
-               + s.decimal_error_count + s.tailstock_macro_missing_count)
-        # WRN: 要確認系
-        wrn = s.tcp_count + s.radius_comp_n_count
-        # LINES: 入力プログラム総行数
-        try:
-            content = self.input_text.get("1.0", "end-1c")
-            lines = content.count("\n") + (1 if content else 0)
-        except tk.TclError:
-            lines = 0
+    # =====================================================================
+    # v35 目次（TOC）まわり：findings/summary を7分類のヒット一覧に組み立て、
+    # 判定帯・ゼロ件畳み表示・グループ目次・ミニマップ・エディタ塗り分けへ配線する。
+    # 検査ロジック（collect_program_findings等）自体には一切手を入れない。
+    # =====================================================================
 
-        # 状態判定（err優先）
-        if err == 0 and wrn == 0:
-            state = "ok"
-        elif err >= 3 or (err >= 1 and wrn >= 3):
-            state = "critical" if err >= 5 else "warning"
-        elif err >= 1:
-            state = "warning"
+    def _toc_val_msg(self, finding: Finding) -> tuple[str, str]:
+        """Finding 1件を目次の (値, メッセージ) 表示用に整形する（表示専用の整形）"""
+        if finding.kind == "overspeed":
+            m = re.search(r"S[+-]?\d+(?:\.\d+)?", finding.text, flags=re.IGNORECASE)
+            return (m.group(0).upper() if m else finding.text[:10]), "回転数上限を超過"
+        if finding.kind == "overfeed":
+            m = re.search(r"F[+-]?\d+(?:\.\d+)?", finding.text, flags=re.IGNORECASE)
+            return (m.group(0).upper() if m else finding.text[:10]), "送り上限を超過"
+        if finding.kind == "tcp":
+            return finding.text, "TCP指令を検出"
+        if finding.kind == "decimal_error":
+            return finding.text, "小数点の誤りを検出"
+        if finding.kind == "tailstock_macro_missing":
+            return "M25→G361", finding.text
+        return finding.text, ""
+
+    def _collect_duplicate_n_hits(self, report: ReportData) -> list[dict]:
+        hits: list[dict] = []
+        for label, line_list in report.summary.duplicate_n_details:
+            for line_no in sorted(line_list):
+                others = [str(x) for x in sorted(line_list) if x != line_no]
+                msg = f"N番号が重複（{', '.join(others)}行と）" if others else "N番号が重複"
+                hits.append({"line": line_no, "val": label, "msg": msg})
+        return hits
+
+    def _collect_radius_hits(self, program_lines: list[str]) -> list[dict]:
+        hits: list[dict] = []
+        for block in split_n_blocks(program_lines):
+            line_no = block_radius_comp_line(block.rows)
+            if line_no is not None:
+                hits.append({"line": line_no, "val": block.n_label, "msg": "径補正(G41/G42)を使用"})
+        return hits
+
+    def _build_toc_groups(self, report: ReportData, program_lines: list[str]) -> list[dict]:
+        finding_kinds = {"overspeed", "overfeed", "decimal_error", "tailstock_macro_missing", "tcp"}
+        hits_by_kind: dict[str, list[dict]] = {k: [] for k in finding_kinds}
+        for finding in report.findings:
+            if finding.kind in hits_by_kind:
+                val, msg = self._toc_val_msg(finding)
+                hits_by_kind[finding.kind].append({"line": finding.line_no, "val": val, "msg": msg})
+        hits_by_kind["duplicate_n"] = self._collect_duplicate_n_hits(report)
+        hits_by_kind["radius_comp_n"] = self._collect_radius_hits(program_lines)
+
+        groups: list[dict] = []
+        for g in TOC_GROUPS:
+            hits = sorted(hits_by_kind.get(g["kind"], []), key=lambda h: h["line"])
+            groups.append({**g, "hits": hits})
+        return groups
+
+    def _render_verdict_and_toc(self, groups: list[dict], total_lines: int) -> None:
+        err_count = sum(len(g["hits"]) for g in groups if g["sev"] == "err")
+        wrn_count = sum(len(g["hits"]) for g in groups if g["sev"] == "wrn")
+
+        if err_count > 0:
+            state = "ng"
+        elif wrn_count > 0:
+            state = "wn"
         else:
-            state = "caution"
+            state = "ok"
+        if hasattr(self, "_verdict_band"):
+            self._verdict_band.set_state(state, err=err_count, wrn=wrn_count, lines=total_lines)
 
-        self.status_banner.set_state(state, err=err, wrn=wrn, lines=lines)
+        self._render_toc(groups)
+
+    def _render_toc(self, groups: list[dict]) -> None:
+        if not hasattr(self, "_toc_inner"):
+            return
+        for w in self._toc_inner.winfo_children():
+            w.destroy()
+        self._toc_item_widgets = {}
+
+        zero_groups = [g for g in groups if not g["hits"]]
+        active_groups = [g for g in groups if g["hits"]]
+
+        # ゼロ件は畳んで1行に
+        self._zeros_text.configure(state="normal")
+        self._zeros_text.delete("1.0", tk.END)
+        for g in zero_groups:
+            self._zeros_text.insert(tk.END, "✔ ", "chk")
+            self._zeros_text.insert(tk.END, g["label"] + "    ")
+        self._zeros_text.configure(state="disabled")
+        if zero_groups:
+            self._zeros_text.pack(fill="x", before=self._toc_wrap)
+        else:
+            self._zeros_text.pack_forget()
+
+        if not active_groups:
+            tk.Label(self._toc_inner, text="✔ ALL CLEAR", bg=BG_PANEL, fg=OK_COLOR,
+                     font=("Consolas", 16, "bold")).pack(anchor="w", padx=13, pady=(24, 4))
+            tk.Label(self._toc_inner, text="検出された問題はありません", bg=BG_PANEL, fg=TEXT_MUTED,
+                     font=("Yu Gothic UI", 10)).pack(anchor="w", padx=13)
+            return
+
+        for g in active_groups:
+            kind = g["kind"]
+            if kind not in self._toc_group_open:
+                self._toc_group_open[kind] = True  # 検出ありのグループはデフォルト展開
+            self._render_toc_group(g)
+
+    def _render_toc_group(self, g: dict) -> None:
+        kind = g["kind"]
+        is_open = self._toc_group_open.get(kind, True)
+        glyph = "✕" if g["sev"] == "err" else ("▲" if g["sev"] == "wrn" else "・")
+
+        group_frame = tk.Frame(self._toc_inner, bg=BG_PANEL)
+        group_frame.pack(fill="x")
+
+        header = tk.Frame(group_frame, bg=BG_PANEL, cursor="hand2")
+        header.pack(fill="x")
+        arrow = tk.Label(header, text=("▼" if is_open else "▶"), bg=BG_PANEL, fg=TEXT_MUTED,
+                         font=("Consolas", 8), cursor="hand2")
+        arrow.pack(side="left", padx=(13, 8), pady=9)
+        sw = tk.Frame(header, bg=g["color"], width=3, height=15)
+        sw.pack(side="left", padx=(0, 8))
+        tk.Label(header, text=glyph, bg=BG_PANEL, fg=g["color"], font=("Consolas", 10),
+                 width=1, cursor="hand2").pack(side="left")
+        tk.Label(header, text=g["label"], bg=BG_PANEL, fg=TEXT_MAIN,
+                 font=("Yu Gothic UI", 11), cursor="hand2").pack(side="left", padx=(6, 0))
+        tk.Label(header, text=str(len(g["hits"])), bg=BG_PANEL, fg=g["color"],
+                 font=("Consolas", 11, "bold"), cursor="hand2").pack(side="right", padx=13)
+
+        for w in (header, arrow, sw, *header.winfo_children()):
+            w.bind("<Button-1>", lambda _e, k=kind: self._toggle_toc_group(k))
+
+        sep = tk.Frame(group_frame, bg="#131C25", height=1)
+        sep.pack(fill="x")
+
+        if not is_open:
+            return
+
+        for hit in g["hits"]:
+            line_no = hit["line"]
+            selected = (self._toc_selected_line == line_no)
+            item = tk.Frame(group_frame, bg=("#171F29" if selected else BG_PANEL), cursor="hand2")
+            item.pack(fill="x")
+            bar = tk.Frame(item, bg=(g["color"] if selected else BG_PANEL), width=3)
+            bar.pack(side="left", fill="y")
+            ln_lbl = tk.Label(item, text=str(line_no), bg=item["bg"],
+                              fg=(ACCENT if selected else TEXT_MUTED),
+                              font=("Consolas", 9), width=5, anchor="e", cursor="hand2")
+            ln_lbl.pack(side="left", padx=(8, 9), pady=6)
+            val_lbl = tk.Label(item, text=hit["val"], bg=item["bg"], fg=g["color"],
+                               font=("Consolas", 10, "bold"), cursor="hand2")
+            val_lbl.pack(side="left")
+            msg_lbl = tk.Label(item, text=hit["msg"], bg=item["bg"],
+                               fg=(TEXT_MAIN if selected else TEXT_MUTED),
+                               font=("Yu Gothic UI", 9), anchor="w", cursor="hand2")
+            msg_lbl.pack(side="left", padx=(10, 8), fill="x", expand=True)
+
+            self._toc_item_widgets.setdefault(line_no, []).append(item)
+            for w in (item, bar, ln_lbl, val_lbl, msg_lbl):
+                w.bind("<Button-1>", lambda _e, ln=line_no: self._select_toc_item(ln))
+
+    def _toggle_toc_group(self, kind: str) -> None:
+        self._toc_group_open[kind] = not self._toc_group_open.get(kind, True)
+        if self._last_toc_groups is not None:
+            self._render_toc(self._last_toc_groups)
+
+    def _select_toc_item(self, line_no: int) -> None:
+        self._toc_selected_line = line_no
+        if self._last_toc_groups is not None:
+            self._render_toc(self._last_toc_groups)
+        self.jump_to_input_line(line_no)
+
+    def _update_minimap(self, groups: list[dict], program_lines: list[str]) -> None:
+        if not hasattr(self, "_minimap"):
+            return
+        markers: list[tuple[int, str]] = []
+        for g in groups:
+            sev = "err" if g["sev"] == "err" else ("wrn" if g["sev"] == "wrn" else None)
+            if sev is None:
+                continue
+            for hit in g["hits"]:
+                markers.append((hit["line"], sev))
+        n_starts = []
+        for block in split_n_blocks(program_lines):
+            block_line_nos = [ln for ln, _ in block.rows]
+            if block_line_nos:
+                n_starts.append(min(block_line_nos))
+        self._minimap.set_data(max(1, len(program_lines)), markers, n_starts)
+
+    def _severity_line_sets(self, groups: list[dict]) -> tuple[set[int], set[int]]:
+        err_lines: set[int] = set()
+        warn_lines: set[int] = set()
+        for g in groups:
+            target = err_lines if g["sev"] == "err" else (warn_lines if g["sev"] == "wrn" else None)
+            if target is None:
+                continue
+            for hit in g["hits"]:
+                target.add(hit["line"])
+        return err_lines, warn_lines
+
+    def _on_report_ready(self, report: ReportData, program_text: str) -> None:
+        """チェック実行/自動再チェック後の共通後処理。
+        判定帯・目次・ミニマップ・エディタの赤/黄ハイライトをまとめて更新する。
+        """
+        program_lines = program_text.splitlines()
+        groups = self._build_toc_groups(report, program_lines)
+        self._last_toc_groups = groups
+        err_lines, warn_lines = self._severity_line_sets(groups)
+
+        self._render_report(report, err_lines=err_lines, warn_lines=warn_lines)
+        self._render_verdict_and_toc(groups, len(program_lines))
+        self._update_minimap(groups, program_lines)
 
     def jump_to_input_line(self, line_no: int) -> None:
         start = f"{line_no}.0"
@@ -2236,6 +2573,7 @@ class NcCheckApp:
         self.output_text.delete("1.0", tk.END)
         self._clear_output_jump_tags()
         self.input_text.tag_remove("error_line_highlight", "1.0", tk.END)
+        self.input_text.tag_remove("warn_line_highlight", "1.0", tk.END)
         self.input_text.tag_remove("jump_highlight", "1.0", tk.END)
         self.status_var.set(f"読込済み: {os.path.basename(path)}")
         self._highlight_all()
@@ -2244,6 +2582,13 @@ class NcCheckApp:
         self._block_info_cache = {}
         self._block_info_ranges = []
         self._show_block_info_placeholder("▶ チェック実行後に表示されます")
+        self._last_toc_groups = None
+        self._toc_selected_line = None
+        self._render_toc_placeholder("▶ チェック実行後に表示されます")
+        if hasattr(self, "_verdict_band"):
+            self._verdict_band.set_state("idle")
+        if hasattr(self, "_minimap"):
+            self._minimap.set_data(1, [], [])
         return True
 
     def run_check(self) -> None:
@@ -2257,12 +2602,13 @@ class NcCheckApp:
 
     def _do_check_after_scan(self, program_text: str) -> None:
         settings = self._get_settings()
+        self._update_limits_summary(settings)
         report = build_report(program_text, settings)
-        self._render_report(report)
+        self._on_report_ready(report, program_text)
         self._highlight_all()
         # Nブロック情報キャッシュを更新（findings渡して危険件数集計）
         self._refresh_block_info_cache(report.findings)
-        self.status_var.set("チェック完了。右側の青文字をクリックすると元の行へ移動します。")
+        self.status_var.set("チェック完了。目次の項目をクリックすると元の行へ移動します。")
 
     def _play_scan_animation(self, on_complete=None) -> None:
         """入力エリアに緑のスキャンラインを上から下に走らせる演出。
@@ -2413,6 +2759,7 @@ class NcCheckApp:
         self._clear_output_jump_tags()
         self.input_text.tag_remove("jump_highlight", "1.0", tk.END)
         self.input_text.tag_remove("error_line_highlight", "1.0", tk.END)
+        self.input_text.tag_remove("warn_line_highlight", "1.0", tk.END)
         self.loaded_path = None
         self.path_var.set("未読込")
         self.status_var.set("入力をクリアしました。")
@@ -2421,6 +2768,13 @@ class NcCheckApp:
         self._block_info_cache = {}
         self._block_info_ranges = []
         self._show_block_info_placeholder("▶ チェック実行後に表示されます")
+        self._last_toc_groups = None
+        self._toc_selected_line = None
+        self._render_toc_placeholder("▶ チェック実行後に表示されます")
+        if hasattr(self, "_verdict_band"):
+            self._verdict_band.set_state("idle")
+        if hasattr(self, "_minimap"):
+            self._minimap.set_data(1, [], [])
 
     # --- 元に戻す（Ctrl+Z相当） ---
     def _do_undo(self) -> None:
