@@ -1369,25 +1369,26 @@ class NcCheckApp:
         tk.Button(font_frame, text="A+", command=self._font_increase, **btn_kw).pack(side="left")
 
         # ===== 3ペイン =====
-        body = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, sashwidth=1, sashrelief=tk.FLAT,
-                              bg=BORDER, bd=0)
-        body.pack(fill="both", expand=True)
+        # ペイン同士が独立したウィンドウに見えるよう、sashを最小限の「黒い隙間」として使う
+        body = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, sashwidth=6, sashrelief=tk.FLAT,
+                              bg=BG_APP, bd=0)
+        body.pack(fill="both", expand=True, padx=6, pady=6)
 
         block_info_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
         n_index_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
         input_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
         result_panel = tk.Frame(body, bg=BG_PANEL, bd=0, highlightthickness=0)
 
-        # 画面幅から初期幅を計算（BLOCK INFO/N目次はやや狭く、原文/結果を広めに）
+        # 画面幅から初期幅を計算（BLOCK INFOはやや狭く、N目次を広め、原文は広め、結果はやや狭く）
         try:
             sw = self.root.winfo_screenwidth()
         except tk.TclError:
             sw = 1920
         unit = max(200, int((sw - 40) / 5))  # 5等分の1ユニット
         body.add(block_info_panel, stretch="always", width=int(unit * 0.85), minsize=210)
-        body.add(n_index_panel, stretch="always", width=int(unit * 0.56), minsize=110)
+        body.add(n_index_panel, stretch="always", width=int(unit * 0.95), minsize=160)
         body.add(input_panel, stretch="always", width=int(unit * 2.0), minsize=300)
-        body.add(result_panel, stretch="always", width=int(unit * 1.7), minsize=300)
+        body.add(result_panel, stretch="always", width=int(unit * 1.4), minsize=280)
 
         self._build_block_info_panel(block_info_panel)
         self._build_n_index_panel(n_index_panel)
@@ -2000,18 +2001,18 @@ class NcCheckApp:
             row_bg = "#171F29" if selected else BG_PANEL
             row = tk.Frame(self._n_index_inner, bg=row_bg, cursor="hand2")
             row.pack(fill="x")
-            bar = tk.Frame(row, bg=(ACCENT if selected else BG_PANEL), width=3)
+            bar = tk.Frame(row, bg=(ACCENT if selected else BG_PANEL), width=4)
             bar.pack(side="left", fill="y")
             label_col = tk.Frame(row, bg=row_bg)
-            label_col.pack(side="left", fill="x", expand=True, padx=(7, 4), pady=6)
+            label_col.pack(side="left", fill="x", expand=True, padx=(10, 6), pady=9)
             lbl = tk.Label(label_col, text=info["n_label"], bg=row_bg,
                            fg=(ACCENT if selected else TEXT_MAIN),
-                           font=("Consolas", 10, "bold"), anchor="w")
+                           font=("Consolas", 15, "bold"), anchor="w")
             lbl.pack(anchor="w", fill="x")
             ln_lbl = tk.Label(label_col, text=info.get("tool_name", "") or "―", bg=row_bg,
-                              fg=TEXT_MUTED, font=("Consolas", 7), anchor="w",
-                              wraplength=110, justify="left")
-            ln_lbl.pack(anchor="w", fill="x")
+                              fg=TEXT_MUTED, font=("Consolas", 10), anchor="w",
+                              wraplength=190, justify="left")
+            ln_lbl.pack(anchor="w", fill="x", pady=(2, 0))
             self._n_index_item_widgets[block_id] = (row, bar, label_col, lbl, ln_lbl)
             for w in (row, bar, label_col, lbl, ln_lbl):
                 w.bind("<Button-1>", lambda _e, ln=info["line_min"]: self.jump_to_input_line(ln))
