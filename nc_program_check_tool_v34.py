@@ -1384,10 +1384,10 @@ class NcCheckApp:
         except tk.TclError:
             sw = 1920
         unit = max(200, int((sw - 40) / 5))  # 5等分の1ユニット
-        body.add(block_info_panel, stretch="always", width=int(unit * 0.72), minsize=190)
+        body.add(block_info_panel, stretch="always", width=int(unit * 0.85), minsize=210)
         body.add(n_index_panel, stretch="always", width=int(unit * 0.56), minsize=110)
-        body.add(input_panel, stretch="always", width=int(unit * 2.1), minsize=300)
-        body.add(result_panel, stretch="always", width=int(unit * 1.75), minsize=300)
+        body.add(input_panel, stretch="always", width=int(unit * 2.0), minsize=300)
+        body.add(result_panel, stretch="always", width=int(unit * 1.7), minsize=300)
 
         self._build_block_info_panel(block_info_panel)
         self._build_n_index_panel(n_index_panel)
@@ -2007,10 +2007,11 @@ class NcCheckApp:
             lbl = tk.Label(label_col, text=info["n_label"], bg=row_bg,
                            fg=(ACCENT if selected else TEXT_MAIN),
                            font=("Consolas", 10, "bold"), anchor="w")
-            lbl.pack(anchor="w")
-            ln_lbl = tk.Label(label_col, text=f"L{info['line_min']}", bg=row_bg,
-                              fg=TEXT_MUTED, font=("Consolas", 7), anchor="w")
-            ln_lbl.pack(anchor="w")
+            lbl.pack(anchor="w", fill="x")
+            ln_lbl = tk.Label(label_col, text=info.get("tool_name", "") or "―", bg=row_bg,
+                              fg=TEXT_MUTED, font=("Consolas", 7), anchor="w",
+                              wraplength=110, justify="left")
+            ln_lbl.pack(anchor="w", fill="x")
             self._n_index_item_widgets[block_id] = (row, bar, label_col, lbl, ln_lbl)
             for w in (row, bar, label_col, lbl, ln_lbl):
                 w.bind("<Button-1>", lambda _e, ln=info["line_min"]: self.jump_to_input_line(ln))
@@ -2134,20 +2135,11 @@ class NcCheckApp:
                      font=("Consolas", 15, "bold"), wraplength=90,
                      justify="center").pack(pady=(0, 9))
 
-        # ===== 送り：ゲージの下に独立した行として表示 =====
-        feed_gauge = tk.Frame(self._block_info_inner, bg=BG_PANEL,
-                              highlightthickness=1, highlightbackground=BORDER)
-        feed_gauge.pack(fill="x", pady=(0, 8))
-        tk.Label(feed_gauge, text="送り", bg=BG_PANEL, fg=TEXT_MUTED,
-                 font=("Yu Gothic UI", 8)).pack(pady=(8, 2))
-        tk.Label(feed_gauge, text=info.get("feed_list", "") or "―",
-                 bg=BG_PANEL, fg=TEXT_MAIN, font=("Consolas", 11, "bold"),
-                 wraplength=200, justify="center").pack(pady=(0, 8))
-
-        # ===== 残り項目をkey-value形式で =====
+        # ===== 残り項目をkey-value形式で（送りは回転数の上に通常行として表示） =====
         rows = [
             ("径補正", info.get("radius_comp", "") or "―"),
             ("ワーク座標", info.get("work_coord", "") or "―"),
+            ("送り", info.get("feed_list", "") or "―"),
             ("回転数", info.get("spindle", "") or "―"),
             ("回転方向", info.get("rotation", "") or "―"),
             ("クーラント", info.get("coolant", "") or "―"),
