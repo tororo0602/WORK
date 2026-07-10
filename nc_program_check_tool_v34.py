@@ -134,6 +134,144 @@ TOC_GROUPS: list[dict] = [
     {"kind": "radius_comp_n", "label": "径補正使用N", "color": TEXT_MUTED, "sev": "info"},
 ]
 
+# v35 M/G記号凡例。チェック結果ペイン下段でカーソル行のコードの意味をリアルタイム表示する。
+GM_CODE_GLOSSARY: dict[str, str] = {
+    "G0": "送り",
+    "G1": "直線切削",
+    "G2": "円弧切削（時計回り）",
+    "G3": "円弧切削（半時計回り）",
+    "G4": "ドウェル",
+    "G17": "平面選択（XY）",
+    "G18": "平面選択（ZX)",
+    "G19": "平面選択（YZ）",
+    "G28": "機械原点復帰",
+    "G30": "第2、第３、第４、原点復帰",
+    "G38": "ワーク押し付け確認",
+    "G40": "工具径補正（キャンセル）",
+    "G41": "工具径補正（左）",
+    "G42": "工具径補正（右）",
+    "G43": "工具補正有効",
+    "G49": "工具補正無効",
+    "G50": "最高回転速度設定",
+    "G54": "ワーク座標系１選択",
+    "G55": "ワーク座標系２選択",
+    "G56": "ワーク座標系３選択",
+    "G57": "ワーク座標系４選択",
+    "G58": "ワーク座標系５選択",
+    "G59": "ワーク座標系６選択",
+    "G68.1": "３次元座標変換",
+    "G69.1": "３次元座標変換キャンセル",
+    "G80": "穴あけ固定サイクルキャンセル",
+    "G83": "端面ドリルサイクル",
+    "G83.5": "端面ドリルサイクル（ステップ）",
+    "G83.6": "端面ドリルサイクル（イニシャル点戻り）",
+    "G84": "端面同期タップサイクル",
+    "G85": "端面ボーリングサイクル",
+    "G87": "側面ドリルサイクル",
+    "G87.5": "側面ドリルサイクル（ステップ）",
+    "G87.6": "側面ドリルサイクル（イニシャル点戻り）",
+    "G88": "側面同期タップサイクル",
+    "G89": "側面ボーリングサイクル",
+    "G96": "切削速度指令",
+    "G97": "回転速度指令",
+    "G98": "毎分送り",
+    "G99": "毎回転送り",
+    "G330": "芯押し台/第二主軸原点復帰",
+    "G361": "工具交換指令（機械原点経由）",
+    "G362": "工具交換指令（第4原点経由）",
+    "M0": "プログラム一時停止",
+    "M1": "オプショナルストップ",
+    "M2": "プログラム終了",
+    "M3": "主軸正転（第一主軸）",
+    "M4": "主軸逆転（第一主軸）",
+    "M5": "主軸停止",
+    "M8": "切削油ON",
+    "M9": "切削油OFF",
+    "M10": "チャッククランプ（第一主軸）",
+    "M11": "チャックアンクランプ（第一主軸）",
+    "M13": "工具正転",
+    "M14": "工具逆転",
+    "M19": "主軸定位置停止（第一主軸）",
+    "M23": "チャンファリングON",
+    "M24": "チャンファリングOFF",
+    "M25": "芯押し台前進",
+    "M26": "芯押し台後退",
+    "M30": "リセット＆リワインド",
+    "M33": "工具収納",
+    "M34": "位相同期運転有効",
+    "M35": "速度同期運転有効",
+    "M36": "同期運転無効",
+    "M45": "C軸接続",
+    "M46": "C軸接続解除",
+    "M68": "主軸ブレーキクランプ（第一主軸）",
+    "M69": "主軸ブレーキアンクランプ（第一主軸）",
+    "M80": "突っ切り確認",
+    "M81": "ワーク押し付け確認有効",
+    "M82": "ワーク押し付け確認無効",
+    "M90": "第一主軸/工具主軸同時運転モードON",
+    "M91": "第一主軸/工具主軸同時運転モードOFF",
+    "M98": "サブプログラム呼出し",
+    "M99": "サブプログラム終了",
+    "M203": "第二主軸正転",
+    "M204": "第二主軸逆転",
+    "M210": "チャッククランプ（第二主軸）",
+    "M211": "チャックアンクランプ（第二主軸）",
+    "M219": "主軸定位置停止（第二主軸）",
+    "M245": "C軸接続（第二主軸）",
+    "M246": "C軸接続解除（第二主軸）",
+    "M268": "主軸ブレーキクランプ（第二主軸）",
+    "M269": "主軸ブレーキアンクランプ（第二主軸）",
+    "M290": "第二主軸/工具主軸同時運転モードON",
+    "M291": "第二主軸/工具主軸同時運転モードOFF",
+    "M301": "ツールヘッドクランプ",
+    "M302": "ツールヘッドアンクランプ",
+    "M303": "第一主軸選択信号ON",
+    "M304": "第二主軸選択信号ON",
+    "M319": "工具主軸/回転工具主軸定位置停止",
+    "M329": "主軸同期タップモードON",
+    "M480": "C軸同期モードON",
+    "M481": "C軸同期モードOFF",
+    "M560": "工具主軸逆転モードON",
+    "M561": "工具主軸逆転モードOFF",
+    "M594": "B軸コンタリングモードON",
+    "M595": "B軸コンタリングモードOFF",
+    "M200": "チップコンベヤ正転",
+    "M201": "チップコンベヤ停止",
+    "M484": "スルースピンドルクーラントON",
+    "M485": "スルースピンドルクーラントOFF",
+    "G65P7001": "引き抜き後突っ切りマクロ（C2→C1）",
+    "G65P7002": "突っ切り後網かごで回収マクロ",
+    "G65P7003": "XY平面溝荒加工マクロ",
+    "G65P7004": "受け渡しマクロ（C1→C2）",
+    "G65P7005": "センサー、C軸中心割り出しマクロ",
+    "G65P7006": "切りくず掃除マクロ",
+    "G65P7007": "切りくず掃除マクロ",
+    "G65P7008": "C軸割り出しマクロ",
+    "G65P7009": "ひっかき棒製品回収マクロ",
+    "G65P7011": "受け渡しマクロ（引き抜き）",
+    "G65P7012": "C軸割り出しマクロ（外径）",
+    "G65P7013": "C軸割り出しマクロ（C軸同期）",
+    "G65P7014": "掴みかえマクロ（C1→C2引き抜き）",
+}
+
+# G65Pxxxx（マクロ呼出し）→ G小数点コード → 通常のG/Mコードの順で長いトークンを優先マッチ
+GM_TOKEN_RE = re.compile(r"G65P\d+|G\d+\.\d+|G\d+|M\d+", re.IGNORECASE)
+
+
+def extract_gm_tokens(line: str) -> list[str]:
+    """1行からG/Mコードのトークンを（コメント除く）出現順に抽出する。表示専用の軽量パーサ。"""
+    if is_comment_line(line.strip()):
+        return []
+    target = strip_inline_comments(line)
+    seen: set[str] = set()
+    tokens: list[str] = []
+    for m in GM_TOKEN_RE.finditer(target):
+        token = m.group(0).upper()
+        if token not in seen:
+            seen.add(token)
+            tokens.append(token)
+    return tokens
+
 
 @dataclass
 class ThresholdSettings:
@@ -1444,14 +1582,14 @@ class NcCheckApp:
         editor_frame = tk.Frame(parent, bg=BG_PANEL, padx=0, pady=0)
         editor_frame.pack(fill="both", expand=True)
 
-        # 行番号ガター + 本文 + スクロールバー を横並び配置（他ペインと同じグレー背景に統一）
-        editor_inner = tk.Frame(editor_frame, bg=BG_PANEL, relief="solid", bd=1,
+        # 行番号ガター + 本文 + スクロールバー を横並び配置（プログラム入力タブは黒背景）
+        editor_inner = tk.Frame(editor_frame, bg=INPUT_BG, relief="solid", bd=1,
                                 highlightthickness=1, highlightbackground=BORDER,
                                 highlightcolor=ACCENT)
         editor_inner.pack(fill="both", expand=True)
 
         # 行番号エリアのコンテナ（ガター本体 + 右端アクセントライン）
-        gutter_frame = tk.Frame(editor_inner, bg=BG_PANEL)
+        gutter_frame = tk.Frame(editor_inner, bg=INPUT_BG)
         gutter_frame.pack(side="left", fill="y")
 
         # 行番号Text（表示専用・編集不可・選択不可）
@@ -1462,7 +1600,7 @@ class NcCheckApp:
             pady=12,
             takefocus=0,
             font=("Consolas", 11),
-            bg=BG_PANEL,
+            bg=INPUT_BG,
             fg="#3A6478",  # マトリクス残像グリーン
             relief="flat",
             bd=0,
@@ -1470,9 +1608,9 @@ class NcCheckApp:
             wrap=tk.NONE,
             cursor="arrow",
             state="disabled",
-            selectbackground=BG_PANEL,  # 選択時も色変えない（選択させない演出）
+            selectbackground=INPUT_BG,  # 選択時も色変えない（選択させない演出）
             selectforeground="#3A6478",
-            inactiveselectbackground=BG_PANEL,
+            inactiveselectbackground=INPUT_BG,
         )
         self.linenumber_text.pack(side="left", fill="y")
 
@@ -1529,7 +1667,7 @@ class NcCheckApp:
             wrap=tk.NONE,
             undo=True,
             font=("Consolas", 11),
-            bg=BG_PANEL,
+            bg=INPUT_BG,
             fg=TEXT_MAIN,
             insertbackground=ACCENT,   # カーソルも蛍光グリーンに
             relief="flat",
@@ -1571,7 +1709,7 @@ class NcCheckApp:
         self.linenumber_text.bind("<Button-4>", _on_wheel_linenumber)
         self.linenumber_text.bind("<Button-5>", _on_wheel_linenumber)
 
-        self.input_text.tag_configure("current_line_bg", background="#232F3D")
+        self.input_text.tag_configure("current_line_bg", background="#141B24")
         self.input_text.tag_configure("warn_line_highlight", background="#2A2008")
         self.input_text.tag_configure("error_line_highlight", background=ERROR_LINE_BG)
         self.input_text.tag_configure("jump_highlight", background=JUMP_LINE_BG)
@@ -1706,6 +1844,7 @@ class NcCheckApp:
         self._on_key_release(event)
         self._update_linenumbers()
         self._update_block_info_for_current_line()
+        self._update_gm_legend_for_current_line()
         # 編集debounce：タイピングが止まってから400ms後にチェック全体再実行
         # （BLOCK INFOキャッシュ・警告類すべて更新される）
         self._schedule_edit_recheck()
@@ -1752,13 +1891,28 @@ class NcCheckApp:
             pass
 
     def _on_input_cursor_move(self, event=None) -> None:
-        """カーソル移動のみ → 現在行ハイライト + N情報パネル軽量更新"""
+        """カーソル移動のみ → 現在行ハイライト + N情報パネル + M/G凡例を軽量更新"""
         self._apply_linenumber_highlights()
         self._update_block_info_for_current_line()
+        self._update_gm_legend_for_current_line()
 
     def _build_result_panel(self, parent: tk.Frame) -> None:
         sp = self._make_secbar(parent, "RESULT", "チェック結果")
         sp.configure(text="クリックで原文へジャンプ")
+
+        # ===== 上下分割：上＝チェック結果、下＝カーソル行のM/G記号凡例 =====
+        vsplit = tk.PanedWindow(parent, orient=tk.VERTICAL, sashwidth=6, sashrelief=tk.FLAT,
+                                bg=BG_APP, bd=0)
+        vsplit.pack(fill="both", expand=True)
+
+        top = tk.Frame(vsplit, bg=BG_PANEL, bd=0, highlightthickness=0)
+        bottom = tk.Frame(vsplit, bg=BG_PANEL, bd=0, highlightthickness=0)
+        vsplit.add(top, stretch="always", height=430, minsize=160)
+        vsplit.add(bottom, stretch="always", height=170, minsize=110)
+
+        self._build_gm_legend_panel(bottom)
+
+        parent = top  # 以降の要素はすべて上段（チェック結果）に配置
 
         # ===== 判定は細い帯1本（デカい枠は置かない） =====
         self._verdict_band = VerdictBand(parent)
@@ -1858,6 +2012,85 @@ class NcCheckApp:
         self.output_text.tag_configure("jump_link", foreground="#8FF0C7", underline=True)
         for style_name, style_kwargs in RESULT_STYLE_MAP.items():
             self.output_text.tag_configure(style_name, **style_kwargs)
+
+    def _build_gm_legend_panel(self, parent: tk.Frame) -> None:
+        """チェック結果ペイン下段：カーソル行にあるM/Gコードの意味をリアルタイム表示する"""
+        self._gm_legend_sp = self._make_secbar(parent, "LEGEND", "M/G記号")
+
+        legend_wrap = tk.Frame(parent, bg=BG_PANEL)
+        legend_wrap.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(legend_wrap, bg=BG_PANEL, highlightthickness=0, bd=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        vbar = tk.Scrollbar(legend_wrap, orient="vertical", bg=BG_PANEL,
+                            troughcolor="#101720", activebackground=ACCENT,
+                            command=canvas.yview)
+        vbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=vbar.set)
+        self._gm_legend_canvas = canvas
+
+        self._gm_legend_inner = tk.Frame(canvas, bg=BG_PANEL, padx=13, pady=10)
+        inner_window = canvas.create_window((0, 0), window=self._gm_legend_inner, anchor="nw")
+
+        def _on_inner_configure(_event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        self._gm_legend_inner.bind("<Configure>", _on_inner_configure)
+
+        def _on_canvas_configure(event):
+            canvas.itemconfigure(inner_window, width=event.width)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        canvas.bind("<MouseWheel>", self._on_gm_legend_wheel)
+        canvas.bind("<Button-4>", self._on_gm_legend_wheel)
+        canvas.bind("<Button-5>", self._on_gm_legend_wheel)
+
+        self._render_gm_legend([], None)
+
+    def _on_gm_legend_wheel(self, event) -> None:
+        if not hasattr(self, "_gm_legend_canvas"):
+            return
+        if event.delta:
+            self._gm_legend_canvas.yview_scroll(int(-event.delta / 120), "units")
+        else:
+            self._gm_legend_canvas.yview_scroll(-1 if getattr(event, "num", 0) == 4 else 1, "units")
+
+    def _render_gm_legend(self, tokens: list[str], line_no: int | None) -> None:
+        if not hasattr(self, "_gm_legend_inner"):
+            return
+        for w in self._gm_legend_inner.winfo_children():
+            w.destroy()
+        if hasattr(self, "_gm_legend_sp"):
+            self._gm_legend_sp.configure(text=(f"{line_no}行目" if line_no else ""))
+
+        if not tokens:
+            tk.Label(self._gm_legend_inner, text="カーソル行にG/Mコードはありません",
+                     bg=BG_PANEL, fg=TEXT_MUTED, font=("Yu Gothic UI", 9),
+                     wraplength=260, justify="left").pack(anchor="w", pady=6)
+            return
+
+        for token in tokens:
+            meaning = GM_CODE_GLOSSARY.get(token)
+            row = tk.Frame(self._gm_legend_inner, bg=BG_PANEL)
+            row.pack(fill="x", pady=4)
+            code_color = ACCENT if meaning else TEXT_MUTED
+            tk.Label(row, text=token, bg=BG_PANEL, fg=code_color,
+                     font=("Consolas", 13, "bold"), anchor="w", width=9).pack(side="left")
+            tk.Label(row, text=meaning or "凡例未登録のコード", bg=BG_PANEL,
+                     fg=(TEXT_MAIN if meaning else TEXT_MUTED),
+                     font=("Yu Gothic UI", 10), anchor="w", justify="left",
+                     wraplength=190).pack(side="left", fill="x", expand=True)
+
+    def _update_gm_legend_for_current_line(self) -> None:
+        if not hasattr(self, "_gm_legend_inner"):
+            return
+        try:
+            cur_idx = self.input_text.index(tk.INSERT)
+            cur_line = int(str(cur_idx).split(".")[0])
+            line_text = self.input_text.get(f"{cur_line}.0", f"{cur_line}.end")
+        except (tk.TclError, ValueError, IndexError):
+            return
+        tokens = extract_gm_tokens(line_text)
+        self._render_gm_legend(tokens, cur_line)
 
     def _toggle_limits(self) -> None:
         self._limits_open = not self._limits_open
@@ -2614,6 +2847,7 @@ class NcCheckApp:
         self.input_text.see(start)
         self.input_text.focus_set()
         self._update_block_info_for_current_line()
+        self._update_gm_legend_for_current_line()
         self.status_var.set(f"{line_no}行目へ移動しました。")
 
     def open_file(self) -> None:
@@ -2674,6 +2908,7 @@ class NcCheckApp:
             self._verdict_band.set_state("idle")
         if hasattr(self, "_minimap"):
             self._minimap.set_data(1, [], [])
+        self._update_gm_legend_for_current_line()
         return True
 
     def run_check(self) -> None:
@@ -2861,6 +3096,7 @@ class NcCheckApp:
             self._verdict_band.set_state("idle")
         if hasattr(self, "_minimap"):
             self._minimap.set_data(1, [], [])
+        self._update_gm_legend_for_current_line()
 
     # --- 元に戻す（Ctrl+Z相当） ---
     def _do_undo(self) -> None:
