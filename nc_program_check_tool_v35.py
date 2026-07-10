@@ -3965,8 +3965,8 @@ class NcMacroAssistDialog(tk.Toplevel):
         self.configure(bg=BG_PANEL)
         self.transient(app.root)
         self.resizable(True, True)
-        self.geometry("900x640")
-        self.minsize(780, 500)
+        self.geometry("940x800")
+        self.minsize(800, 640)
 
         self._build_ui()
         self._reload_defs()
