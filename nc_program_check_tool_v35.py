@@ -20,7 +20,7 @@ try:
 except ImportError:
     HAS_OPENPYXL = False
 
-APP_TITLE = "NCプログラム確認ツール v34"
+APP_TITLE = "NCプログラム確認ツール v35"
 WINDOW_SIZE = "1420x860"
 READ_ENCODINGS = ["utf-8-sig", "utf-8", "cp932", "shift_jis", "latin-1"]
 MODE_TURNING = "ターニング"
@@ -1621,7 +1621,7 @@ class NcCheckApp:
 
         tk.Label(titlebar, text="NCプログラム確認ツール", bg=BG_HEADER, fg=FG_HEADER,
                  font=("Yu Gothic UI", 10, "bold")).pack(side="left")
-        tk.Label(titlebar, text="v34", bg=BG_HEADER, fg=FG_SUB,
+        tk.Label(titlebar, text="v35", bg=BG_HEADER, fg=FG_SUB,
                  font=("Yu Gothic UI", 8)).pack(side="left", padx=(8, 0))
 
         tk.Label(titlebar, textvariable=self.path_var, bg="#143856", fg=FG_SUB,
