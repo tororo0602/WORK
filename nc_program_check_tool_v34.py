@@ -134,8 +134,9 @@ TOC_GROUPS: list[dict] = [
     {"kind": "radius_comp_n", "label": "径補正使用N", "color": TEXT_MUTED, "sev": "info"},
 ]
 
-# v35 M/G記号凡例。チェック結果ペイン下段でカーソル行のコードの意味をリアルタイム表示する。
-GM_CODE_GLOSSARY: dict[str, str] = {
+# v35 M/G記号凡例の初期シードデータ。gm_glossary.json が存在しない初回起動時のみ使われ、
+# 以降はJSONファイルが実データ（ユーザーが自由に追加・編集・削除できる）。
+GM_GLOSSARY_SEED: dict[str, str] = {
     "G0": "送り",
     "G1": "直線切削",
     "G2": "円弧切削（時計回り）",
@@ -271,6 +272,19 @@ def extract_gm_tokens(line: str) -> list[str]:
             seen.add(token)
             tokens.append(token)
     return tokens
+
+
+_MACRO_ARG_INT_RE = re.compile(r"^[+-]?\d+$")
+
+
+def ensure_decimal_value(value: str) -> str:
+    """マクロ呼出し支援：引数値が整数だけの場合、小数点を必須で付与する（例: "100" -> "100."）。
+    既に小数点がある・数値以外（式やブラケット等）はそのまま返す。
+    """
+    value = value.strip()
+    if value and _MACRO_ARG_INT_RE.fullmatch(value):
+        return value + "."
+    return value
 
 
 @dataclass
@@ -409,15 +423,19 @@ def _app_base_dir() -> str:
 
 
 def get_gm_glossary_path() -> str:
-    """ユーザー追加のG/M記号一覧を保存するJSONファイルのパス"""
-    return os.path.join(_app_base_dir(), "gm_glossary_custom.json")
+    """G/M記号一覧（全件）を保存するJSONファイルのパス"""
+    return os.path.join(_app_base_dir(), "gm_glossary.json")
 
 
-def load_custom_gm_glossary() -> dict[str, str]:
-    """ユーザーが追加/上書きしたG/M記号一覧を読み込む。存在しなければ空辞書。"""
+def load_gm_glossary() -> dict[str, str]:
+    """G/M記号一覧（全件）をJSONから読み込む。
+    ファイルが無ければ組み込みシード(GM_GLOSSARY_SEED)で新規作成する。
+    以降はこのJSONファイルが唯一の実データで、ユーザーが自由に追加・編集・削除できる。
+    """
     path = get_gm_glossary_path()
     if not os.path.isfile(path):
-        return {}
+        save_gm_glossary(GM_GLOSSARY_SEED)
+        return dict(GM_GLOSSARY_SEED)
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -425,11 +443,11 @@ def load_custom_gm_glossary() -> dict[str, str]:
             return {str(k).upper(): str(v) for k, v in data.items()}
     except (OSError, json.JSONDecodeError, ValueError):
         pass
-    return {}
+    return dict(GM_GLOSSARY_SEED)
 
 
-def save_custom_gm_glossary(entries: dict[str, str]) -> None:
-    """ユーザーが追加/上書きしたG/M記号一覧を保存する"""
+def save_gm_glossary(entries: dict[str, str]) -> None:
+    """G/M記号一覧（全件）をJSONへ保存する"""
     path = get_gm_glossary_path()
     try:
         with open(path, "w", encoding="utf-8") as f:
@@ -438,14 +456,9 @@ def save_custom_gm_glossary(entries: dict[str, str]) -> None:
         pass
 
 
-def get_nc_macro_defs_dir() -> str:
-    """NCカスタムマクロ（O番号サブプログラム）定義を保存するディレクトリ"""
-    macros_dir = os.path.join(_app_base_dir(), "nc_macro_defs")
-    try:
-        os.makedirs(macros_dir, exist_ok=True)
-    except OSError:
-        pass
-    return macros_dir
+def get_nc_macros_path() -> str:
+    """NCカスタムマクロ（O番号サブプログラム）定義一覧を保存するJSONファイルのパス"""
+    return os.path.join(_app_base_dir(), "nc_macros.json")
 
 
 # マクロ入力支援機能の初期サンプル（ユーザー提供のO7021をそのまま同梱）
@@ -463,33 +476,18 @@ O7021(ORIGIN AUTO SET MACRO)
 %
 """
 
-
-def ensure_default_nc_macro() -> None:
-    """マクロ定義ディレクトリが空なら、サンプルとしてO7021を1つ置いておく"""
-    macros_dir = get_nc_macro_defs_dir()
-    try:
-        if os.listdir(macros_dir):
-            return
-    except OSError:
-        return
-    try:
-        with open(os.path.join(macros_dir, "O7021.txt"), "w", encoding="utf-8") as f:
-            f.write(DEFAULT_NC_MACRO_TEXT)
-    except OSError:
-        pass
-
-
 MACRO_ARG_LINE_RE = re.compile(r"^\(([A-Z])=#\d+\s+(.+)\)\s*$")
 MACRO_HEADER_RE = re.compile(r"^O(\d+)\s*\(([^)]*)\)")
 
 
 def parse_macro_definition(text: str) -> dict | None:
-    """NCカスタムマクロ本文からO番号・タイトル・引数一覧(A〜Z=#N 説明)を抽出する。
+    """NCカスタムマクロ本文からO番号・タイトル・引数一覧(A〜Z=#N 説明)を抽出する（自動解析）。
     マクロ呼出し支援ダイアログの入力フォーム生成専用の軽量パーサ（検査ロジックとは無関係）。
+    戻り値はそのままマクロ定義編集ダイアログへプリフィルされ、手動で修正できる。
     """
     o_number = None
     title = ""
-    args: list[tuple[str, str]] = []
+    args: list[dict] = []
     seen_letters: set[str] = set()
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -504,50 +502,49 @@ def parse_macro_definition(text: str) -> dict | None:
             letter, desc = m.group(1), m.group(2).strip()
             if letter not in seen_letters:
                 seen_letters.add(letter)
-                args.append((letter, desc))
+                args.append({"letter": letter, "desc": desc})
     if o_number is None:
         return None
-    return {"o_number": o_number, "title": title, "args": args, "raw_text": text}
+    return {"o_number": o_number, "title": title, "args": args, "memo": "", "raw_text": text}
 
 
 def load_nc_macro_defs() -> list[dict]:
-    """保存済みのNCカスタムマクロ定義をすべて読み込む（O番号順）"""
-    macros_dir = get_nc_macro_defs_dir()
-    defs = []
-    try:
-        filenames = sorted(os.listdir(macros_dir))
-    except OSError:
+    """マクロ定義一覧をJSONから読み込む。
+    ファイルが無ければユーザー提供のO7021を自動解析してシードとして書き込む。
+    """
+    path = get_nc_macros_path()
+    if not os.path.isfile(path):
+        seed = parse_macro_definition(DEFAULT_NC_MACRO_TEXT)
+        defs = [seed] if seed else []
+        save_nc_macro_defs(defs)
         return defs
-    for filename in filenames:
-        if not filename.lower().endswith((".txt", ".nc")):
-            continue
-        path = os.path.join(macros_dir, filename)
-        text = None
-        for enc in READ_ENCODINGS:
-            try:
-                with open(path, "r", encoding=enc) as f:
-                    text = f.read()
-                break
-            except (OSError, UnicodeDecodeError):
-                continue
-        if text is None:
-            continue
-        parsed = parse_macro_definition(text)
-        if parsed:
-            parsed["filename"] = filename
-            defs.append(parsed)
-    defs.sort(key=lambda d: d["o_number"])
-    return defs
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            defs = []
+            for item in data:
+                if isinstance(item, dict) and item.get("o_number"):
+                    item.setdefault("title", "")
+                    item.setdefault("args", [])
+                    item.setdefault("memo", "")
+                    item.setdefault("raw_text", "")
+                    defs.append(item)
+            defs.sort(key=lambda d: d["o_number"])
+            return defs
+    except (OSError, json.JSONDecodeError, ValueError):
+        pass
+    return []
 
 
-def save_nc_macro_def(o_number: str, text: str) -> str:
-    """NCカスタムマクロ定義をファイルとして保存し、保存先パスを返す"""
-    macros_dir = get_nc_macro_defs_dir()
-    filename = sanitize_macro_filename(o_number) + ".txt"
-    path = os.path.join(macros_dir, filename)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(text)
-    return path
+def save_nc_macro_defs(defs: list[dict]) -> None:
+    """マクロ定義一覧をJSONへ保存する"""
+    path = get_nc_macros_path()
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(defs, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
 
 
 def sanitize_macro_filename(name: str) -> str:
@@ -1476,10 +1473,10 @@ class NcCheckApp:
         self._search_matches: list[str] = []
         self._search_idx: int = -1
 
-        # ユーザー追加のG/M記号一覧（組み込みGM_CODE_GLOSSARYを上書き/拡張）
-        self._custom_gm_codes: dict[str, str] = load_custom_gm_glossary()
-        # マクロ入力支援：初回起動時はサンプル(O7021)を1つ用意
-        ensure_default_nc_macro()
+        # G/M記号一覧（全件）。JSON管理で自由に追加・編集・削除できる。
+        self._gm_codes: dict[str, str] = load_gm_glossary()
+        # マクロ入力支援：JSON管理。初回起動時はサンプル(O7021)を1つ用意しておく
+        load_nc_macro_defs()
 
         # コマンドライン引数経由の初期読み込みファイル（Windows「プログラムから開く」用）
         self._pending_initial_file = initial_file
@@ -2252,11 +2249,8 @@ class NcCheckApp:
         self._render_gm_legend(tokens, cur_line)
 
     def _gm_lookup(self, token: str) -> str | None:
-        """組み込みGM_CODE_GLOSSARYより、ユーザー追加分(self._custom_gm_codes)を優先して引く"""
-        custom = getattr(self, "_custom_gm_codes", None)
-        if custom and token in custom:
-            return custom[token]
-        return GM_CODE_GLOSSARY.get(token)
+        """G/M記号一覧(self._gm_codes、JSON管理)から意味を引く"""
+        return getattr(self, "_gm_codes", {}).get(token)
 
     def _open_gm_glossary_dialog(self) -> None:
         """G/M記号一覧の追加・編集ダイアログを開く（既に開いていれば前面に）"""
@@ -2272,9 +2266,9 @@ class NcCheckApp:
         self._gm_glossary_dialog = GmGlossaryDialog(self)
 
     def _on_gm_glossary_saved(self, entries: dict[str, str]) -> None:
-        """GmGlossaryDialogからの保存コールバック：ユーザー追加分を差し替えて即反映"""
-        self._custom_gm_codes = entries
-        save_custom_gm_glossary(entries)
+        """GmGlossaryDialogからの保存コールバック：一覧を差し替えて即反映"""
+        self._gm_codes = entries
+        save_gm_glossary(entries)
         self._update_gm_legend_for_current_line()
 
     def _open_macro_assist_dialog(self) -> None:
@@ -3762,14 +3756,15 @@ def generate_first_article_excel(nc_text: str, output_path: str, file_name: str 
 
 
 class GmGlossaryDialog(tk.Toplevel):
-    """G/M記号一覧にユーザーが自分でコードと意味を追加・編集・削除できるダイアログ。
-    保存内容は app._custom_gm_codes として組み込みGM_CODE_GLOSSARYより優先して使われる。
+    """G/M記号一覧（全件）をユーザーが自由に追加・編集・削除できるダイアログ。
+    保存内容は gm_glossary.json に書き出され、app._gm_codes として使われる。
     """
 
     def __init__(self, app: "NcCheckApp") -> None:
         super().__init__(app.root)
         self.app = app
-        self._entries: dict[str, str] = dict(getattr(app, "_custom_gm_codes", {}) or {})
+        self._entries: dict[str, str] = dict(getattr(app, "_gm_codes", {}) or {})
+        self._editing_code: str | None = None
 
         self.title("G/M記号の追加・編集")
         self.configure(bg=BG_PANEL)
@@ -3795,11 +3790,12 @@ class GmGlossaryDialog(tk.Toplevel):
 
         tk.Label(outer, text="G/M記号の追加・編集", bg=BG_PANEL, fg=ACCENT,
                  font=("Consolas", 12, "bold")).pack(anchor="w")
-        tk.Label(outer, text="ここで追加したコードは組み込みの一覧より優先して使われます。",
+        tk.Label(outer, text="コードと意味は自由に追加・編集・削除できます（gm_glossary.jsonで管理）。"
+                             "一覧の行をクリックすると編集できます。",
                  bg=BG_PANEL, fg=TEXT_MUTED, font=("Yu Gothic UI", 9),
                  wraplength=460, justify="left").pack(anchor="w", pady=(2, 10))
 
-        # ===== 新規追加フォーム =====
+        # ===== 追加・編集フォーム =====
         add_row = tk.Frame(outer, bg=BG_PANEL)
         add_row.pack(fill="x", pady=(0, 10))
         self._code_var = tk.StringVar()
@@ -3808,26 +3804,32 @@ class GmGlossaryDialog(tk.Toplevel):
                  font=("Yu Gothic UI", 8)).grid(row=0, column=0, sticky="w")
         tk.Label(add_row, text="意味", bg=BG_PANEL, fg=TEXT_MUTED,
                  font=("Yu Gothic UI", 8)).grid(row=0, column=1, sticky="w", padx=(8, 0))
-        code_entry = tk.Entry(add_row, textvariable=self._code_var, font=("Consolas", 11),
-                              bg=INPUT_BG, fg=TEXT_MAIN, insertbackground=ACCENT,
-                              relief="solid", bd=1, highlightthickness=1,
-                              highlightbackground=BORDER, highlightcolor=ACCENT, width=10)
-        code_entry.grid(row=1, column=0, sticky="ew")
+        self._code_entry = tk.Entry(add_row, textvariable=self._code_var, font=("Consolas", 11),
+                                    bg=INPUT_BG, fg=TEXT_MAIN, insertbackground=ACCENT,
+                                    relief="solid", bd=1, highlightthickness=1,
+                                    highlightbackground=BORDER, highlightcolor=ACCENT, width=10)
+        self._code_entry.grid(row=1, column=0, sticky="ew")
         meaning_entry = tk.Entry(add_row, textvariable=self._meaning_var, font=("Yu Gothic UI", 10),
                                  bg=INPUT_BG, fg=TEXT_MAIN, insertbackground=ACCENT,
                                  relief="solid", bd=1, highlightthickness=1,
                                  highlightbackground=BORDER, highlightcolor=ACCENT)
         meaning_entry.grid(row=1, column=1, sticky="ew", padx=(8, 8))
         add_row.grid_columnconfigure(1, weight=1)
-        add_btn = tk.Button(
+        self._add_btn = tk.Button(
             add_row, text="追加", command=self._add_entry,
             font=("Yu Gothic UI", 9, "bold"), bg=ACCENT, fg="#04231F",
             activebackground=ACCENT_DARK, activeforeground="#04231F",
             relief="solid", bd=1, padx=12, pady=3, cursor="hand2",
         )
-        add_btn.grid(row=1, column=2, sticky="e")
+        self._add_btn.grid(row=1, column=2, sticky="e")
+        self._clear_btn = tk.Button(
+            add_row, text="編集をやめる", command=self._clear_form,
+            font=("Yu Gothic UI", 8), bg=INPUT_BG, fg=TEXT_MUTED,
+            activebackground="#1F2B3A", activeforeground=TEXT_MAIN,
+            relief="solid", bd=1, padx=8, pady=3, cursor="hand2",
+        )
         meaning_entry.bind("<Return>", lambda _e: self._add_entry())
-        code_entry.bind("<Return>", lambda _e: meaning_entry.focus_set())
+        self._code_entry.bind("<Return>", lambda _e: meaning_entry.focus_set())
 
         # ===== 一覧（スクロール可能） =====
         list_wrap = tk.Frame(outer, bg=INPUT_BG, relief="solid", bd=1,
@@ -3883,38 +3885,63 @@ class GmGlossaryDialog(tk.Toplevel):
         if not code or not meaning:
             messagebox.showwarning("入力不足", "コードと意味の両方を入力してください。", parent=self)
             return
+        # 編集中に別コードへ書き換えた場合は元コードを消してから登録し直す
+        if self._editing_code and self._editing_code != code:
+            self._entries.pop(self._editing_code, None)
         self._entries[code] = meaning
-        self._code_var.set("")
-        self._meaning_var.set("")
+        self._clear_form()
         self._render_list()
 
     def _delete_entry(self, code: str) -> None:
         self._entries.pop(code, None)
+        if self._editing_code == code:
+            self._clear_form()
         self._render_list()
+
+    def _load_for_edit(self, code: str) -> None:
+        self._editing_code = code
+        self._code_var.set(code)
+        self._meaning_var.set(self._entries.get(code, ""))
+        self._add_btn.configure(text="更新")
+        self._clear_btn.grid(row=1, column=3, sticky="e", padx=(6, 0))
+        self._code_entry.focus_set()
+
+    def _clear_form(self) -> None:
+        self._editing_code = None
+        self._code_var.set("")
+        self._meaning_var.set("")
+        self._add_btn.configure(text="追加")
+        self._clear_btn.grid_remove()
 
     def _render_list(self) -> None:
         for w in self._list_inner.winfo_children():
             w.destroy()
         if not self._entries:
-            tk.Label(self._list_inner, text="追加したコードはまだありません",
+            tk.Label(self._list_inner, text="コードがまだありません",
                      bg=INPUT_BG, fg=TEXT_MUTED, font=("Yu Gothic UI", 9)).pack(
                          anchor="w", padx=10, pady=12)
             return
         for code in sorted(self._entries.keys()):
             meaning = self._entries[code]
-            row = tk.Frame(self._list_inner, bg=INPUT_BG)
+            selected = code == self._editing_code
+            row_bg = "#171F29" if selected else INPUT_BG
+            row = tk.Frame(self._list_inner, bg=row_bg, cursor="hand2")
             row.pack(fill="x", padx=8, pady=3)
-            tk.Label(row, text=code, bg=INPUT_BG, fg=ACCENT,
-                     font=("Consolas", 11, "bold"), width=9, anchor="w").pack(side="left")
-            tk.Label(row, text=meaning, bg=INPUT_BG, fg=TEXT_MAIN,
-                     font=("Yu Gothic UI", 10), anchor="w", justify="left",
-                     wraplength=260).pack(side="left", fill="x", expand=True)
+            code_lbl = tk.Label(row, text=code, bg=row_bg, fg=ACCENT,
+                                font=("Consolas", 11, "bold"), width=9, anchor="w")
+            code_lbl.pack(side="left")
+            meaning_lbl = tk.Label(row, text=meaning, bg=row_bg, fg=TEXT_MAIN,
+                                   font=("Yu Gothic UI", 10), anchor="w", justify="left",
+                                   wraplength=230)
+            meaning_lbl.pack(side="left", fill="x", expand=True)
             tk.Button(
                 row, text="削除", command=lambda c=code: self._delete_entry(c),
-                font=("Yu Gothic UI", 8), bg=INPUT_BG, fg="#C97C8A",
+                font=("Yu Gothic UI", 8), bg=row_bg, fg="#C97C8A",
                 activebackground="#452030", activeforeground="#E0A0AE",
                 relief="solid", bd=1, padx=8, pady=1, cursor="hand2",
             ).pack(side="right")
+            for w in (row, code_lbl, meaning_lbl):
+                w.bind("<Button-1>", lambda _e, c=code: self._load_for_edit(c))
 
     def _save_and_close(self) -> None:
         self.app._on_gm_glossary_saved(dict(self._entries))
@@ -3923,8 +3950,8 @@ class GmGlossaryDialog(tk.Toplevel):
 
 class NcMacroAssistDialog(tk.Toplevel):
     """カスタムマクロ（O番号サブプログラム）の呼出し行を組み立てて挿入する支援ダイアログ。
-    マクロ定義（O番号・タイトル・引数一覧）は nc_macro_defs/ 配下のテキストから読み込む。
-    複数のマクロを登録・切替できる。
+    マクロ定義（O番号・タイトル・引数一覧・メモ）は nc_macros.json に一括保存され、
+    自動解析（ファイル取込）と手動作成・編集の両方に対応する。複数のマクロを登録・切替できる。
     """
 
     def __init__(self, app: "NcCheckApp") -> None:
@@ -3938,8 +3965,8 @@ class NcMacroAssistDialog(tk.Toplevel):
         self.configure(bg=BG_PANEL)
         self.transient(app.root)
         self.resizable(True, True)
-        self.geometry("880x600")
-        self.minsize(760, 480)
+        self.geometry("900x640")
+        self.minsize(780, 500)
 
         self._build_ui()
         self._reload_defs()
@@ -3966,20 +3993,28 @@ class NcMacroAssistDialog(tk.Toplevel):
 
         # ===== 左：マクロ一覧 =====
         left = tk.Frame(body, bg=INPUT_BG, relief="solid", bd=1,
-                        highlightthickness=1, highlightbackground=BORDER, width=260)
+                        highlightthickness=1, highlightbackground=BORDER, width=270)
         left.pack(side="left", fill="y")
         left.pack_propagate(False)
 
         left_head = tk.Frame(left, bg=INPUT_BG, padx=10, pady=8)
         left_head.pack(fill="x")
         tk.Label(left_head, text="マクロ一覧", bg=INPUT_BG, fg=TEXT_MUTED,
-                 font=("Yu Gothic UI", 9, "bold")).pack(side="left")
+                 font=("Yu Gothic UI", 9, "bold")).pack(anchor="w")
+        btn_row = tk.Frame(left_head, bg=INPUT_BG)
+        btn_row.pack(fill="x", pady=(6, 0))
         tk.Button(
-            left_head, text="＋ 追加", command=self._import_macro,
+            btn_row, text="＋ 自動解析", command=self._import_macro,
             font=("Yu Gothic UI", 8, "bold"), bg=ACCENT, fg="#04231F",
             activebackground=ACCENT_DARK, activeforeground="#04231F",
-            relief="solid", bd=1, padx=8, pady=2, cursor="hand2",
-        ).pack(side="right")
+            relief="solid", bd=1, padx=6, pady=2, cursor="hand2",
+        ).pack(side="left")
+        tk.Button(
+            btn_row, text="＋ 手動作成", command=self._create_macro_manual,
+            font=("Yu Gothic UI", 8), bg=BG_PANEL, fg=TEXT_MAIN,
+            activebackground="#1F2B3A", activeforeground=TEXT_MAIN,
+            relief="solid", bd=1, padx=6, pady=2, cursor="hand2",
+        ).pack(side="left", padx=(6, 0))
 
         list_canvas = tk.Canvas(left, bg=INPUT_BG, highlightthickness=0, bd=0)
         list_canvas.pack(side="left", fill="both", expand=True)
@@ -4003,13 +4038,32 @@ class NcMacroAssistDialog(tk.Toplevel):
         right = tk.Frame(body, bg=BG_PANEL, padx=12)
         right.pack(side="left", fill="both", expand=True)
 
-        self._detail_title = tk.Label(right, text="左からマクロを選んでください",
+        detail_header = tk.Frame(right, bg=BG_PANEL)
+        detail_header.pack(fill="x")
+        self._detail_title = tk.Label(detail_header, text="左からマクロを選んでください",
                                       bg=BG_PANEL, fg=TEXT_MAIN, font=("Consolas", 13, "bold"),
                                       anchor="w")
-        self._detail_title.pack(anchor="w")
+        self._detail_title.pack(side="left", anchor="w")
+        self._edit_btn = tk.Button(
+            detail_header, text="編集", command=self._edit_selected,
+            font=("Yu Gothic UI", 8), bg=INPUT_BG, fg=TEXT_MAIN,
+            activebackground="#1F2B3A", activeforeground=TEXT_MAIN,
+            relief="solid", bd=1, padx=8, pady=2, cursor="hand2",
+        )
         self._detail_sub = tk.Label(right, text="", bg=BG_PANEL, fg=TEXT_MUTED,
                                     font=("Yu Gothic UI", 9), anchor="w")
-        self._detail_sub.pack(anchor="w", pady=(2, 10))
+        self._detail_sub.pack(anchor="w", pady=(2, 6))
+
+        # ===== メモ（あれば表示） =====
+        self._memo_frame = tk.Frame(right, bg=BG_PANEL)
+        tk.Label(self._memo_frame, text="メモ", bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 8)).pack(anchor="w")
+        self._memo_text = tk.Text(
+            self._memo_frame, height=3, wrap="word", bd=1, relief="solid",
+            bg=INPUT_BG, fg=TEXT_MUTED, font=("Yu Gothic UI", 9), padx=6, pady=4,
+            highlightthickness=1, highlightbackground=BORDER, state="disabled", cursor="arrow",
+        )
+        self._memo_text.pack(fill="x", pady=(2, 8))
 
         form_wrap = tk.Frame(right, bg=INPUT_BG, relief="solid", bd=1,
                              highlightthickness=1, highlightbackground=BORDER)
@@ -4035,8 +4089,9 @@ class NcMacroAssistDialog(tk.Toplevel):
         # ===== プレビュー & 挿入 =====
         preview_wrap = tk.Frame(right, bg=BG_PANEL)
         preview_wrap.pack(fill="x", pady=(10, 0))
-        tk.Label(preview_wrap, text="呼出し行プレビュー", bg=BG_PANEL, fg=TEXT_MUTED,
-                 font=("Yu Gothic UI", 8)).pack(anchor="w")
+        note = tk.Label(preview_wrap, text="呼出し行プレビュー（数値のみの引数には自動で小数点を付与）",
+                        bg=BG_PANEL, fg=TEXT_MUTED, font=("Yu Gothic UI", 8))
+        note.pack(anchor="w")
         self._preview_var = tk.StringVar(value="")
         preview_entry = tk.Entry(
             preview_wrap, textvariable=self._preview_var, font=("Consolas", 12, "bold"),
@@ -4068,9 +4123,9 @@ class NcMacroAssistDialog(tk.Toplevel):
         for w in self._list_inner.winfo_children():
             w.destroy()
         if not self._defs:
-            tk.Label(self._list_inner, text="マクロがありません。\n「＋ 追加」でファイルを取り込めます。",
+            tk.Label(self._list_inner, text="マクロがありません。\n「＋ 自動解析」または「＋ 手動作成」で追加できます。",
                      bg=INPUT_BG, fg=TEXT_MUTED, font=("Yu Gothic UI", 9),
-                     wraplength=220, justify="left").pack(anchor="w", padx=10, pady=12)
+                     wraplength=230, justify="left").pack(anchor="w", padx=10, pady=12)
             return
         for d in self._defs:
             selected = self._selected is not None and self._selected.get("o_number") == d["o_number"]
@@ -4080,12 +4135,16 @@ class NcMacroAssistDialog(tk.Toplevel):
             bar = tk.Frame(row, bg=(ACCENT if selected else INPUT_BG), width=3)
             bar.pack(side="left", fill="y")
             col = tk.Frame(row, bg=row_bg)
-            col.pack(side="left", fill="x", expand=True, padx=(8, 6), pady=7)
+            col.pack(side="left", fill="x", expand=True, padx=(8, 4), pady=7)
             tk.Label(col, text=d["o_number"], bg=row_bg, fg=(ACCENT if selected else TEXT_MAIN),
                      font=("Consolas", 11, "bold"), anchor="w").pack(anchor="w")
             tk.Label(col, text=d.get("title", ""), bg=row_bg, fg=TEXT_MUTED,
-                     font=("Yu Gothic UI", 8), anchor="w", wraplength=180,
+                     font=("Yu Gothic UI", 8), anchor="w", wraplength=170,
                      justify="left").pack(anchor="w")
+            edit_icon = tk.Label(row, text="編集", bg=row_bg, fg=TEXT_MUTED,
+                                 font=("Yu Gothic UI", 8), cursor="hand2")
+            edit_icon.pack(side="right", padx=(0, 8))
+            edit_icon.bind("<Button-1>", lambda _e, dd=d: self._edit_macro(dd))
             for w in (row, bar, col, *col.winfo_children()):
                 w.bind("<Button-1>", lambda _e, dd=d: self._select_macro(dd))
 
@@ -4112,13 +4171,36 @@ class NcMacroAssistDialog(tk.Toplevel):
             messagebox.showerror(
                 "解析エラー",
                 "O番号の見出し（例: O7021(タイトル)）が見つかりませんでした。\n"
-                "マクロ本文の先頭付近にO番号とタイトルを記載してください。",
+                "「＋ 手動作成」から直接入力することもできます。",
                 parent=self,
             )
             return
-        save_nc_macro_def(parsed["o_number"], text)
+        # 自動解析はあくまで下書き。手動編集ダイアログを開いて内容を確認・修正してから保存する。
+        MacroDefEditDialog(self.app, on_save=self._on_macro_def_saved,
+                           macro_def=parsed, original_o_number=parsed["o_number"])
+
+    def _create_macro_manual(self) -> None:
+        MacroDefEditDialog(self.app, on_save=self._on_macro_def_saved)
+
+    def _edit_selected(self) -> None:
+        if self._selected:
+            self._edit_macro(self._selected)
+
+    def _edit_macro(self, macro_def: dict) -> None:
+        MacroDefEditDialog(self.app, on_save=self._on_macro_def_saved,
+                           macro_def=macro_def, original_o_number=macro_def.get("o_number"))
+
+    def _on_macro_def_saved(self, macro_def: dict, original_o_number: str | None) -> None:
+        """MacroDefEditDialogからの保存コールバック：O番号で一意になるよう置き換えて保存"""
+        defs = load_nc_macro_defs()
+        if original_o_number:
+            defs = [d for d in defs if d.get("o_number") != original_o_number]
+        defs = [d for d in defs if d.get("o_number") != macro_def["o_number"]]
+        defs.append(macro_def)
+        defs.sort(key=lambda d: d["o_number"])
+        save_nc_macro_defs(defs)
         self._reload_defs()
-        self._select_macro(parsed)
+        self._select_macro(macro_def)
 
     # ---- 引数フォーム ----
 
@@ -4128,8 +4210,19 @@ class NcMacroAssistDialog(tk.Toplevel):
         self._reload_defs()
 
         self._detail_title.configure(text=f"{macro_def['o_number']}  {macro_def.get('title', '')}")
+        self._edit_btn.pack(side="right")
         p_number = re.sub(r"\D", "", macro_def["o_number"])
         self._detail_sub.configure(text=f"呼出しコード: G65 P{p_number}")
+
+        memo = (macro_def.get("memo") or "").strip()
+        if memo:
+            self._memo_text.configure(state="normal")
+            self._memo_text.delete("1.0", tk.END)
+            self._memo_text.insert("1.0", memo)
+            self._memo_text.configure(state="disabled")
+            self._memo_frame.pack(fill="x", after=self._detail_sub)
+        else:
+            self._memo_frame.pack_forget()
 
         for w in self._form_inner.winfo_children():
             w.destroy()
@@ -4141,7 +4234,9 @@ class NcMacroAssistDialog(tk.Toplevel):
             self._update_preview()
             return
 
-        for letter, desc in args:
+        for arg in args:
+            letter = arg["letter"]
+            desc = arg.get("desc", "")
             row = tk.Frame(self._form_inner, bg=INPUT_BG)
             row.pack(fill="x", pady=4)
             tk.Label(row, text=letter, bg=INPUT_BG, fg=ACCENT,
@@ -4157,6 +4252,8 @@ class NcMacroAssistDialog(tk.Toplevel):
                              relief="solid", bd=1, highlightthickness=1,
                              highlightbackground=BORDER, highlightcolor=ACCENT, width=10)
             entry.pack(side="right")
+            # 引数値は小数点必須：フォーカスが外れた時点で整数だけなら "." を自動付与
+            entry.bind("<FocusOut>", lambda _e, v=var: v.set(ensure_decimal_value(v.get())))
             self._arg_vars[letter] = var
 
         self._update_preview()
@@ -4167,9 +4264,10 @@ class NcMacroAssistDialog(tk.Toplevel):
             return
         p_number = re.sub(r"\D", "", self._selected["o_number"])
         parts = [f"G65P{p_number}"]
-        for letter, _desc in self._selected.get("args", []):
+        for arg in self._selected.get("args", []):
+            letter = arg["letter"]
             value = self._arg_vars.get(letter)
-            text = value.get().strip() if value else ""
+            text = ensure_decimal_value(value.get()) if value else ""
             if text:
                 parts.append(f"{letter}{text}")
         self._preview_var.set("".join(parts))
@@ -4184,6 +4282,197 @@ class NcMacroAssistDialog(tk.Toplevel):
             return
         self.app.insert_text_at_cursor(line + "\n")
         self.app.status_var.set(f"マクロ呼出し行を挿入しました: {line}")
+
+
+class MacroDefEditDialog(tk.Toplevel):
+    """マクロ定義（O番号・タイトル・引数一覧・複数行メモ）の作成・編集ダイアログ。
+    自動解析（ファイル取込）結果のプリフィルにも、ゼロからの手動作成にも使う共通フォーム。
+    保存は on_save(macro_def, original_o_number) コールバック経由でNcMacroAssistDialogへ渡す。
+    """
+
+    def __init__(self, app: "NcCheckApp", on_save, macro_def: dict | None = None,
+                 original_o_number: str | None = None) -> None:
+        super().__init__(app.root)
+        self.app = app
+        self._on_save = on_save
+        self._original_o_number = original_o_number
+        self._arg_rows: list[dict] = []
+
+        self.title("マクロ定義の作成・編集")
+        self.configure(bg=BG_PANEL)
+        self.transient(app.root)
+        self.resizable(True, True)
+        self.geometry("620x680")
+        self.minsize(520, 500)
+
+        self._build_ui()
+        if macro_def:
+            self._load(macro_def)
+        else:
+            self._add_arg_row()
+
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.update_idletasks()
+        try:
+            px = app.root.winfo_rootx() + (app.root.winfo_width() - self.winfo_width()) // 2
+            py = app.root.winfo_rooty() + (app.root.winfo_height() - self.winfo_height()) // 2
+            self.geometry(f"+{max(0, px)}+{max(0, py)}")
+        except tk.TclError:
+            pass
+        self.grab_set()
+
+    def _build_ui(self) -> None:
+        outer = tk.Frame(self, bg=BG_PANEL, padx=14, pady=12)
+        outer.pack(fill="both", expand=True)
+
+        tk.Label(outer, text="マクロ定義の作成・編集", bg=BG_PANEL, fg=ACCENT,
+                 font=("Consolas", 12, "bold")).pack(anchor="w")
+        tk.Label(outer, text="自動解析の結果もここで手動修正できます。",
+                 bg=BG_PANEL, fg=TEXT_MUTED, font=("Yu Gothic UI", 9)).pack(anchor="w", pady=(2, 10))
+
+        head = tk.Frame(outer, bg=BG_PANEL)
+        head.pack(fill="x", pady=(0, 8))
+        self._o_number_var = tk.StringVar()
+        self._title_var = tk.StringVar()
+        tk.Label(head, text="O番号", bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 8)).grid(row=0, column=0, sticky="w")
+        tk.Label(head, text="タイトル", bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 8)).grid(row=0, column=1, sticky="w", padx=(8, 0))
+        tk.Entry(head, textvariable=self._o_number_var, font=("Consolas", 11),
+                 bg=INPUT_BG, fg=TEXT_MAIN, insertbackground=ACCENT, relief="solid", bd=1,
+                 highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+                 width=10).grid(row=1, column=0, sticky="ew")
+        tk.Entry(head, textvariable=self._title_var, font=("Yu Gothic UI", 10),
+                 bg=INPUT_BG, fg=TEXT_MAIN, insertbackground=ACCENT, relief="solid", bd=1,
+                 highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+                 ).grid(row=1, column=1, sticky="ew", padx=(8, 0))
+        head.grid_columnconfigure(1, weight=1)
+
+        # ===== メモ（複数行） =====
+        tk.Label(outer, text="メモ（複数行可）", bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 8)).pack(anchor="w", pady=(4, 2))
+        memo_wrap = tk.Frame(outer, bg=INPUT_BG, relief="solid", bd=1,
+                             highlightthickness=1, highlightbackground=BORDER)
+        memo_wrap.pack(fill="x", pady=(0, 10))
+        self._memo_text = tk.Text(
+            memo_wrap, height=4, wrap="word", bd=0, highlightthickness=0,
+            bg=INPUT_BG, fg=TEXT_MAIN, insertbackground=ACCENT,
+            font=("Yu Gothic UI", 10), padx=6, pady=6,
+        )
+        self._memo_text.pack(fill="x")
+
+        # ===== 引数一覧 =====
+        args_head = tk.Frame(outer, bg=BG_PANEL)
+        args_head.pack(fill="x")
+        tk.Label(args_head, text="引数一覧（記号＋説明）", bg=BG_PANEL, fg=TEXT_MUTED,
+                 font=("Yu Gothic UI", 8, "bold")).pack(side="left")
+        tk.Button(
+            args_head, text="＋ 引数を追加", command=self._add_arg_row,
+            font=("Yu Gothic UI", 8), bg=INPUT_BG, fg=TEXT_MAIN,
+            activebackground="#1F2B3A", activeforeground=TEXT_MAIN,
+            relief="solid", bd=1, padx=8, pady=2, cursor="hand2",
+        ).pack(side="right")
+
+        args_wrap = tk.Frame(outer, bg=INPUT_BG, relief="solid", bd=1,
+                             highlightthickness=1, highlightbackground=BORDER)
+        args_wrap.pack(fill="both", expand=True, pady=(4, 10))
+        args_canvas = tk.Canvas(args_wrap, bg=INPUT_BG, highlightthickness=0, bd=0)
+        args_canvas.pack(side="left", fill="both", expand=True)
+        args_vbar = tk.Scrollbar(args_wrap, orient="vertical", bg=BG_PANEL,
+                                 troughcolor="#101720", activebackground=ACCENT,
+                                 command=args_canvas.yview)
+        args_vbar.pack(side="right", fill="y")
+        args_canvas.configure(yscrollcommand=args_vbar.set)
+        self._args_inner = tk.Frame(args_canvas, bg=INPUT_BG, padx=6, pady=6)
+        args_window = args_canvas.create_window((0, 0), window=self._args_inner, anchor="nw")
+
+        def _on_args_configure(_e=None):
+            args_canvas.configure(scrollregion=args_canvas.bbox("all"))
+        self._args_inner.bind("<Configure>", _on_args_configure)
+
+        def _on_args_canvas_configure(event):
+            args_canvas.itemconfigure(args_window, width=event.width)
+        args_canvas.bind("<Configure>", _on_args_canvas_configure)
+
+        footer = tk.Frame(outer, bg=BG_PANEL)
+        footer.pack(fill="x")
+        tk.Button(
+            footer, text="保存", command=self._save,
+            font=("Yu Gothic UI", 10, "bold"), bg=ACCENT, fg="#04231F",
+            activebackground=ACCENT_DARK, activeforeground="#04231F",
+            relief="solid", bd=1, padx=16, pady=6, cursor="hand2",
+        ).pack(side="right")
+        tk.Button(
+            footer, text="キャンセル", command=self.destroy,
+            font=("Yu Gothic UI", 9), bg=INPUT_BG, fg=TEXT_MAIN,
+            activebackground="#1F2B3A", activeforeground=TEXT_MAIN,
+            relief="solid", bd=1, padx=12, pady=6, cursor="hand2",
+        ).pack(side="right", padx=(0, 8))
+
+    def _load(self, macro_def: dict) -> None:
+        self._o_number_var.set(macro_def.get("o_number", ""))
+        self._title_var.set(macro_def.get("title", ""))
+        self._memo_text.delete("1.0", tk.END)
+        self._memo_text.insert("1.0", macro_def.get("memo", ""))
+        args = macro_def.get("args", [])
+        for arg in args:
+            self._add_arg_row(arg.get("letter", ""), arg.get("desc", ""))
+        if not args:
+            self._add_arg_row()
+
+    def _add_arg_row(self, letter: str = "", desc: str = "") -> None:
+        row = tk.Frame(self._args_inner, bg=INPUT_BG)
+        row.pack(fill="x", pady=2)
+        letter_var = tk.StringVar(value=letter)
+        desc_var = tk.StringVar(value=desc)
+        tk.Entry(row, textvariable=letter_var, font=("Consolas", 11, "bold"),
+                 bg=BG_PANEL, fg=ACCENT, insertbackground=ACCENT, relief="solid", bd=1,
+                 highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+                 width=3, justify="center").pack(side="left")
+        tk.Entry(row, textvariable=desc_var, font=("Yu Gothic UI", 10),
+                 bg=BG_PANEL, fg=TEXT_MAIN, insertbackground=ACCENT, relief="solid", bd=1,
+                 highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+                 ).pack(side="left", fill="x", expand=True, padx=(6, 6))
+        row_info = {"frame": row, "letter_var": letter_var, "desc_var": desc_var}
+        tk.Button(
+            row, text="✕", command=lambda: self._remove_arg_row(row_info),
+            font=("Yu Gothic UI", 8), bg=INPUT_BG, fg="#C97C8A",
+            activebackground="#452030", activeforeground="#E0A0AE",
+            relief="solid", bd=1, padx=6, pady=1, cursor="hand2",
+        ).pack(side="right")
+        self._arg_rows.append(row_info)
+
+    def _remove_arg_row(self, row_info: dict) -> None:
+        row_info["frame"].destroy()
+        self._arg_rows.remove(row_info)
+
+    def _save(self) -> None:
+        o_number = self._o_number_var.get().strip().upper()
+        if not o_number:
+            messagebox.showwarning("入力不足", "O番号を入力してください。", parent=self)
+            return
+        if not re.match(r"^O?\d+$", o_number):
+            messagebox.showwarning("形式エラー", "O番号は「O7021」のように入力してください。", parent=self)
+            return
+        if not o_number.startswith("O"):
+            o_number = "O" + o_number
+
+        args = []
+        for row_info in self._arg_rows:
+            letter = row_info["letter_var"].get().strip().upper()
+            desc = row_info["desc_var"].get().strip()
+            if letter:
+                args.append({"letter": letter, "desc": desc})
+
+        macro_def = {
+            "o_number": o_number,
+            "title": self._title_var.get().strip(),
+            "args": args,
+            "memo": self._memo_text.get("1.0", "end-1c"),
+            "raw_text": "",
+        }
+        self._on_save(macro_def, self._original_o_number)
+        self.destroy()
 
 
 def _re_match_t(s: str) -> bool:
