@@ -4215,14 +4215,11 @@ class NcMacroAssistDialog(tk.Toplevel):
         self._detail_sub.configure(text=f"呼出しコード: G65 P{p_number}")
 
         memo = (macro_def.get("memo") or "").strip()
-        if memo:
-            self._memo_text.configure(state="normal")
-            self._memo_text.delete("1.0", tk.END)
-            self._memo_text.insert("1.0", memo)
-            self._memo_text.configure(state="disabled")
-            self._memo_frame.pack(fill="x", after=self._detail_sub)
-        else:
-            self._memo_frame.pack_forget()
+        self._memo_text.configure(state="normal")
+        self._memo_text.delete("1.0", tk.END)
+        self._memo_text.insert("1.0", memo if memo else "（メモなし。「編集」から追加できます）")
+        self._memo_text.configure(state="disabled")
+        self._memo_frame.pack(fill="x", after=self._detail_sub)
 
         for w in self._form_inner.winfo_children():
             w.destroy()
