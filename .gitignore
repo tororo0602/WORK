@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+gm_glossary_custom.json
+nc_macro_defs/
