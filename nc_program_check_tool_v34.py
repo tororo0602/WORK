@@ -4058,12 +4058,20 @@ class NcMacroAssistDialog(tk.Toplevel):
         self._memo_frame = tk.Frame(right, bg=BG_PANEL)
         tk.Label(self._memo_frame, text="メモ", bg=BG_PANEL, fg=TEXT_MUTED,
                  font=("Yu Gothic UI", 8)).pack(anchor="w")
+        memo_body = tk.Frame(self._memo_frame, bg=INPUT_BG, relief="solid", bd=1,
+                             highlightthickness=1, highlightbackground=BORDER)
+        memo_body.pack(fill="x", pady=(2, 8))
         self._memo_text = tk.Text(
-            self._memo_frame, height=3, wrap="word", bd=1, relief="solid",
+            memo_body, height=10, wrap="word", bd=0,
             bg=INPUT_BG, fg=TEXT_MUTED, font=("Yu Gothic UI", 9), padx=6, pady=4,
-            highlightthickness=1, highlightbackground=BORDER, state="disabled", cursor="arrow",
+            highlightthickness=0, state="disabled", cursor="arrow",
         )
-        self._memo_text.pack(fill="x", pady=(2, 8))
+        self._memo_text.pack(side="left", fill="both", expand=True)
+        memo_vbar = tk.Scrollbar(memo_body, orient="vertical", bg=BG_PANEL,
+                                 troughcolor="#101720", activebackground=ACCENT,
+                                 command=self._memo_text.yview)
+        memo_vbar.pack(side="right", fill="y")
+        self._memo_text.configure(yscrollcommand=memo_vbar.set)
 
         form_wrap = tk.Frame(right, bg=INPUT_BG, relief="solid", bd=1,
                              highlightthickness=1, highlightbackground=BORDER)
