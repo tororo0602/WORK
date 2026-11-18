@@ -9,8 +9,10 @@
 #   python -m PyInstaller nc_program_check_tool_v39.spec
 #
 # 必要ファイル（同じフォルダに置くこと）:
-#   - nc_program_check_tool_v39.py
-#   - splash_v37.png
+#   - nc_program_check_tool_v39.py と import している各モジュール
+#   - splash_start.png, wooln-wireframe-splash.png, mascot.webp
+# 任意: gm_glossary.json / nc_macros.json / macros/ があれば同梱する。
+#       無ければアプリ初回起動時にシードから自動生成される。
 
 from pathlib import Path
 from shutil import copy2, copytree
@@ -77,6 +79,7 @@ coll = COLLECT(
 source_dir = Path(SPECPATH)
 app_dir = Path(DISTPATH) / 'nc_program_check_tool_v39'
 for filename in ('gm_glossary.json', 'nc_macros.json'):
-    copy2(source_dir / filename, app_dir / filename)
+    if (source_dir / filename).is_file():
+        copy2(source_dir / filename, app_dir / filename)
 if (source_dir / 'macros').is_dir():
     copytree(source_dir / 'macros', app_dir / 'macros', dirs_exist_ok=True)

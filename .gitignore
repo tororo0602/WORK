@@ -7,3 +7,4 @@ dist/
 *.cmd
 *_preview.png
 v39_exe_failure.png
+macros/
