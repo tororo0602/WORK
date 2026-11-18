@@ -779,6 +779,75 @@ def extract_g43_h_list(block_rows: list[tuple[int, str]]) -> list[tuple[int, int
     return result
 
 
+def find_g361_line(block_rows: list[tuple[int, str]]) -> int | None:
+    """ブロック内で最初に G361（工具交換）が現れる行番号。コメントは無視。"""
+    for line_no, line in block_rows:
+        stripped = line.strip()
+        if not stripped or is_comment_line(stripped):
+            continue
+        compact = normalize_fragment(strip_inline_comments(stripped)).upper()
+        if re.search(r"G361(?!\d)", compact):
+            return line_no
+    return None
+
+
+# 補正コメント自動挿入の書式: (H30) / (H30 H39)
+OFFSET_COMMENT_RE = re.compile(r"^\(H\d+(?: H\d+)*\)$", flags=re.IGNORECASE)
+
+
+def is_offset_comment_line(stripped: str) -> bool:
+    return bool(OFFSET_COMMENT_RE.match(stripped))
+
+
+def plan_offset_comments(lines: list[str]) -> list[dict]:
+    """G361 で工具交換する各 N ブロックに、G43 の H 補正を (H30) 形式で書く計画を返す。
+
+    挿入位置は工具名コメントの下（工具名コメントが無ければ N 行の下）。
+    N 行直後のコメント群に既に (H..) 行があれば、内容が違う場合だけ書き換える。
+    戻り値: [{"n_label", "line_no", "action": "insert"|"replace", "old", "new", "comment"}]
+      insert  … line_no の行の後ろに comment を1行追加
+      replace … line_no の行を comment に置き換え
+    """
+    plans: list[dict] = []
+    for block in split_n_blocks(lines):
+        if find_g361_line(block.rows) is None:
+            continue
+        h_nums: list[int] = []
+        for h_num, _ in extract_g43_h_list(block.rows):
+            if h_num not in h_nums:
+                h_nums.append(h_num)
+        if not h_nums:
+            continue
+        comment = "(" + " ".join(f"H{h:02d}" for h in h_nums) + ")"
+
+        n_line_no, n_line = block.rows[0]
+        header: list[tuple[int, str]] = []
+        for line_no, line in block.rows[1:]:
+            stripped = line.strip()
+            if stripped and not is_comment_line(stripped):
+                break
+            header.append((line_no, line))
+
+        existing = next(((ln, l) for ln, l in header if is_offset_comment_line(l.strip())), None)
+        if existing is not None:
+            line_no, line = existing
+            if line.strip().upper() == comment.upper():
+                continue
+            plans.append({"n_label": block.n_label, "line_no": line_no, "action": "replace",
+                          "old": line, "new": comment, "comment": comment})
+            continue
+
+        anchor_no, anchor_line = n_line_no, n_line
+        if not re.search(r"\([^)]*\)", n_line):
+            for line_no, line in header:
+                if line.strip().startswith("("):
+                    anchor_no, anchor_line = line_no, line
+                    break
+        plans.append({"n_label": block.n_label, "line_no": anchor_no, "action": "insert",
+                      "old": anchor_line, "new": f"{anchor_line}\n{comment}", "comment": comment})
+    return plans
+
+
 def detect_tool_offset_mismatch_findings(lines: list[str]) -> list[Finding]:
     """NTX用: G361で交換したT番号の下2桁と G43 の H 補正番号を照合する。
 
@@ -788,15 +857,7 @@ def detect_tool_offset_mismatch_findings(lines: list[str]) -> list[Finding]:
     """
     findings: list[Finding] = []
     for block in split_n_blocks(lines):
-        g361_line_no = None
-        for line_no, line in block.rows:
-            stripped = line.strip()
-            if not stripped or is_comment_line(stripped):
-                continue
-            compact = normalize_fragment(strip_inline_comments(stripped)).upper()
-            if re.search(r"G361(?!\d)", compact):
-                g361_line_no = line_no
-                break
+        g361_line_no = find_g361_line(block.rows)
         if g361_line_no is None:
             continue
 
@@ -915,6 +976,8 @@ def extract_tool_name(block_rows: list[tuple[int, str]]) -> tuple[str, int | Non
         stripped = line.strip()
         if not stripped:
             continue
+        if is_offset_comment_line(stripped):
+            continue  # 自動挿入の補正コメント (H30) は工具名ではない
         if stripped.startswith("("):
             return stripped, line_no
     return "", None
@@ -1916,6 +1979,53 @@ class NcCheckApp:
         bar.pack(fill="x")
         return bar.hint
 
+    def _open_offset_comment_preview(self) -> None:
+        """各 N ブロックの工具名コメントの下に G43 の H 補正を (H30) で書き込む（プレビュー確認付き）"""
+        snapshot = self.input_text.get("1.0", "end-1c")
+        if not snapshot.strip():
+            messagebox.showinfo("補正コメント", "NCプログラムが入力されていません。", parent=self.root)
+            return
+        plans = plan_offset_comments(snapshot.split("\n"))
+        if not plans:
+            messagebox.showinfo("補正コメント",
+                                "追加・更新が必要な N 番号はありません。\n"
+                                "（G361 で工具交換し、G43 の H 補正があるブロックが対象です）",
+                                parent=self.root)
+            return
+        rows = [(str(p["line_no"]), p["old"], p["new"]) for p in plans]
+
+        def confirm(selected, _with_comment=False):
+            if not selected:
+                return
+            if self.input_text.get("1.0", "end-1c") != snapshot:
+                messagebox.showwarning("再確認が必要",
+                                       "プログラムが変更されています。もう一度「補正コメント」を押してください。",
+                                       parent=self.root)
+                return
+            chosen = sorted((plans[i] for i in selected), key=lambda p: p["line_no"], reverse=True)
+            widget = self.input_text
+            try:
+                widget.config(autoseparators=False)
+                widget.edit_separator()
+                for p in chosen:
+                    ln = p["line_no"]
+                    if p["action"] == "replace":
+                        widget.delete(f"{ln}.0", f"{ln}.end")
+                        widget.insert(f"{ln}.0", p["comment"])
+                    else:
+                        widget.insert(f"{ln}.end", "\n" + p["comment"])
+                widget.edit_separator()
+            finally:
+                widget.config(autoseparators=True)
+            self._update_linenumbers()
+            self._highlight_all()
+            self._auto_rerun_check()
+            self.status_var.set(f"補正コメントを {len(chosen)} 箇所に書き込みました（Ctrl+Z で元に戻せます）")
+
+        from replacement_preview import ReplacementPreview
+        self._offset_comment_preview = ReplacementPreview(
+            self.root, f"補正コメント（{len(plans)}箇所）", rows, list(range(len(plans))), confirm, grouped=True)
+
     def _build_ui(self) -> None:
         self.root.configure(bg=BG_APP)
         self._configure_ttk_styles()
@@ -1932,6 +2042,7 @@ class NcCheckApp:
         tk.Frame(toolbar, bg="#2A3846", width=1, height=22).pack(side="left", padx=5)
         self._make_action_button(toolbar, "置換 (Ctrl+H)", self._open_replace_dialog).pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "NCコード挿入支援", self._open_macro_assist_dialog).pack(side="left", padx=(0, 7))
+        self._make_action_button(toolbar, "補正コメント", self._open_offset_comment_preview).pack(side="left", padx=(0, 7))
         self._undo_button = self._make_action_button(toolbar, "↶ 元に戻す", self._do_undo)
         self._undo_button.pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "入力をクリア", self.clear_input).pack(side="left", padx=(0, 7))
