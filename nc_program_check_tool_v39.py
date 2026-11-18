@@ -1979,6 +1979,74 @@ class NcCheckApp:
         bar.pack(fill="x")
         return bar.hint
 
+    def _open_toolpath_window(self) -> None:
+        """簡易軌跡シミュレーター（カーソルのある N ブロックを描画）を開く"""
+        win = getattr(self, "_toolpath_window", None)
+        if win is not None and win.winfo_exists():
+            win.deiconify()
+            win.lift()
+        else:
+            from toolpath_sim import ToolpathWindow
+
+            def button(parent, text, command):
+                return SmoothButton(parent, text=text, command=command, bg="#1C2C3B", fg="#E1EBF4",
+                                    activebackground="#29465B", activeforeground="#FFFFFF",
+                                    font=("Yu Gothic UI", 10), cursor="hand2")
+
+            self._toolpath_window = ToolpathWindow(self.root, on_jump=self.jump_to_input_line,
+                                                   on_follow=self._toolpath_follow_line, button_factory=button)
+        self._toolpath_after = None
+        self._update_toolpath_now()
+
+    def _update_toolpath_for_current_line(self) -> None:
+        """カーソル移動・編集のたびに呼ばれる。軌跡ウィンドウが開いていれば少し待って更新する"""
+        win = getattr(self, "_toolpath_window", None)
+        if win is None or not win.winfo_exists():
+            return
+        if getattr(self, "_toolpath_after", None) is not None:
+            self.root.after_cancel(self._toolpath_after)
+        self._toolpath_after = self.root.after(150, self._update_toolpath_now)
+
+    def _update_toolpath_now(self) -> None:
+        self._toolpath_after = None
+        win = getattr(self, "_toolpath_window", None)
+        if win is None or not win.winfo_exists():
+            return
+        try:
+            cur_line = int(self.input_text.index(tk.INSERT).split(".")[0])
+            lines = self.input_text.get("1.0", "end-1c").splitlines()
+        except (tk.TclError, ValueError):
+            return
+        block = None
+        for candidate in split_n_blocks(lines):
+            if candidate.rows and candidate.rows[0][0] <= cur_line <= candidate.rows[-1][0]:
+                block = candidate
+                break
+        if block is None:
+            return
+        mode = detect_n_index_mode(block.rows)
+        if not mode:
+            mode = "TURN" if classify_block_mode(block.rows) == MODE_TURNING else "MILL"
+        win.set_block(block.n_label, block.rows, mode)
+        win.highlight_line(cur_line)
+
+    def _toolpath_follow_line(self, line_no: int) -> None:
+        """再生中の行をエディタで追う（フォーカスは奪わない）"""
+        try:
+            self.input_text.tag_remove("jump_highlight", "1.0", tk.END)
+            self.input_text.tag_add("jump_highlight", f"{line_no}.0", f"{line_no}.end")
+            self.input_text.tag_raise("jump_highlight")
+            self.input_text.mark_set(tk.INSERT, f"{line_no}.0")
+            self.input_text.see(f"{line_no}.0")
+        except tk.TclError:
+            return
+        self._apply_linenumber_highlights()
+        self._update_block_info_for_current_line()
+        self._update_gm_legend_for_current_line()
+        win = getattr(self, "_toolpath_window", None)
+        if win is not None and win.winfo_exists():
+            win.highlight_line(line_no)
+
     def _open_offset_comment_preview(self) -> None:
         """各 N ブロックの工具名コメントの下に G43 の H 補正を (H30) で書き込む（プレビュー確認付き）"""
         snapshot = self.input_text.get("1.0", "end-1c")
@@ -2043,6 +2111,7 @@ class NcCheckApp:
         self._make_action_button(toolbar, "置換 (Ctrl+H)", self._open_replace_dialog).pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "NCコード挿入支援", self._open_macro_assist_dialog).pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "補正コメント", self._open_offset_comment_preview).pack(side="left", padx=(0, 7))
+        self._make_action_button(toolbar, "軌跡", self._open_toolpath_window).pack(side="left", padx=(0, 7))
         self._undo_button = self._make_action_button(toolbar, "↶ 元に戻す", self._do_undo)
         self._undo_button.pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "入力をクリア", self.clear_input).pack(side="left", padx=(0, 7))
@@ -2427,6 +2496,7 @@ class NcCheckApp:
         self._apply_linenumber_highlights(current_only=True)
         self._update_block_info_for_current_line()
         self._update_gm_legend_for_current_line()
+        self._update_toolpath_for_current_line()
 
     def _schedule_edit_recheck(self) -> None:
         """編集後にdebounceでチェック全体を自動再実行"""
@@ -2510,6 +2580,7 @@ class NcCheckApp:
         self._apply_linenumber_highlights()
         self._update_block_info_for_current_line()
         self._update_gm_legend_for_current_line()
+        self._update_toolpath_for_current_line()
 
     def _build_result_panel(self, parent: tk.Frame) -> None:
         sp = self._make_secbar(parent, "RESULT", "チェック結果")
@@ -3680,6 +3751,7 @@ class NcCheckApp:
         self.input_text.focus_set()
         self._update_block_info_for_current_line()
         self._update_gm_legend_for_current_line()
+        self._update_toolpath_for_current_line()
         self.status_var.set(f"{line_no}行目へ移動しました。")
 
     def open_file(self) -> None:
