@@ -73,6 +73,11 @@ msgs = [x.text for x in f]
 assert any("H08/H09" in x and "複数" in x for x in msgs), msgs
 assert any("H09" in x and "不一致" in x for x in msgs), msgs
 
+# H39以上（パーマネント）は複数チェックからも除外
+assert kinds(block("N8", "T2001", ["G43H39", "G43H139"])) == []
+assert kinds(block("N8", "T2008", ["G43H08", "G43H39"])) == []
+assert any("H08/H09" in x.text for x in kinds(block("N8", "T2008", ["G43H08", "G43H39", "G43H09"])))
+
 # G361 の無いブロックは対象外
 assert kinds("N9\nT2001\nG43H12\nM1\n") == []
 

@@ -784,7 +784,7 @@ def detect_tool_offset_mismatch_findings(lines: list[str]) -> list[Finding]:
 
     - Tの下2桁とHが違う（H39以上はパーマネント工具としてスルー）
     - G361で工具交換したのに G43 H が無い
-    - 同一ブロックに G43 の H が複数種類ある
+    - 同一ブロックに G43 の H が複数種類ある（H39以上は数えない）
     """
     findings: list[Finding] = []
     for block in split_n_blocks(lines):
@@ -812,6 +812,8 @@ def detect_tool_offset_mismatch_findings(lines: list[str]) -> list[Finding]:
 
         distinct: list[int] = []
         for h_num, h_line_no in h_list:
+            if h_num >= PERMANENT_TOOL_H_MIN:
+                continue  # パーマネント工具のHは複数チェックの対象外
             if h_num not in distinct:
                 distinct.append(h_num)
                 if len(distinct) == 2:
