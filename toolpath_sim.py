@@ -8,7 +8,8 @@
   - G28 / G30 / G53 / G361 は線を切るだけ（機械原点の座標は不明なため）
 未対応（notices に記録）:
   - 旋削固定サイクル G70〜G76、変数（#）・マクロ（G65/G66）・IF/GOTO/WHILE
-  - 同時5軸 G43.4、C 軸割り出しの回転反映、円筒補間、径補正、B 軸、工具形状
+  - 同時5軸 G43.4、円筒補間、径補正、B 軸、工具形状
+C 軸割り出し（G112 の外の C 指令）は、ミーリングの点を C 角度ぶん回してワーク基準の端面図に描く。
 """
 from __future__ import annotations
 
@@ -25,12 +26,17 @@ from dataclasses import dataclass, field
 SPACE_TURN = "turn"     # 点 = (Z, X半径, Y)
 SPACE_MILL = "mill"     # 点 = (X半径, Y, Z)
 SPACE_POLAR = "polar"   # 点 = (X半径, C, Z)
+SPACE_MILL_C = "mill_c"  # 点 = (ワークX, ワークY, Z, 機械X半径)  C 割り出しを反映
+
+# C のプラス方向。+1: C+ でワークが反時計回り（端面を正面から見て）。逆なら -1 にする（仮決め）
+C_SIGN = 1.0
 
 # 画面ごとの表示定義: (タイトル, 横軸の添字, 縦軸の添字, 横軸名, 縦軸名)
 SPACE_VIEWS = {
     SPACE_TURN: [("旋削  Z–X", 0, 1, "Z", "X(半径)")],
     SPACE_MILL: [("ミーリング  X–Y", 0, 1, "X(半径)", "Y"), ("ミーリング  X–Z", 0, 2, "X(半径)", "Z")],
     SPACE_POLAR: [("極座標補間  X–C（端面）", 0, 1, "X(半径)", "C"), ("極座標補間  X–Z", 0, 2, "X(半径)", "Z")],
+    SPACE_MILL_C: [("端面（ワーク基準・C割り出し反映）", 0, 1, "X", "Y"), ("機械座標  X–Z", 3, 2, "X(半径)", "Z")],
 }
 
 RAPID_MM_MIN = 20000.0      # 早送りの見かけ速度（実機値は不明なので見た目用）
@@ -48,6 +54,8 @@ class Segment:
     kind: str                       # "rapid" | "feed"
     pts: list                       # 空間座標の 3 要素タプルの列
     weight: float = 0.0             # アニメーション用の相対時間
+    c0: float | None = None         # 始点・終点の C 角度（割り出し、度）
+    c1: float | None = None
 
 
 @dataclass
@@ -194,20 +202,25 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
             rpm = spindle or 1000.0
         return max(f * max(rpm, 1.0), 1.0)
 
-    def emit(line_no: int, kind: str, pts) -> None:
+    def emit(line_no: int, kind: str, pts, c0=None, c1=None) -> None:
         length = _polyline_length(pts)
+        if not polar and c0 is not None and c1 is not None and abs(c1 - c0) > 1e-9:
+            # C 軸が回る移動: 回転ぶんの周長も長さに含める
+            radius = max(math.hypot(pts[0][0], pts[0][1]), math.hypot(pts[-1][0], pts[-1][1]))
+            length = math.hypot(length, radius * math.radians(abs(c1 - c0)))
         if length < 1e-9:
             return
         rate = RAPID_MM_MIN if kind == "rapid" else feed_rate()
-        segments.append((current_space(), Segment(line_no, kind, list(pts), length / rate)))
+        segments.append((current_space(), Segment(line_no, kind, list(pts), length / rate, c0, c1)))
 
     def move_linear(line_no: int, kind: str, target: dict) -> None:
         space = current_space()
         p0 = _point(space, pos)
+        c0 = pos.get("C")
         pos.update(target)
         p1 = _point(space, pos)
         if p0 is not None and p1 is not None:
-            emit(line_no, kind, [p0, p1])
+            emit(line_no, kind, [p0, p1], c0, pos.get("C"))
 
     for line_no, raw in rows:
         code = _strip_comments(raw).strip().upper()
@@ -306,8 +319,9 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
                 c_val = pos["C"] + values["H"] if pos["C"] is not None else None
             target["C"] = c_val
             if not polar and c_val not in (None, 0.0):
+                if not c_index:
+                    note(line_no, "C軸割り出しをワーク基準で描画（C+ の回転方向は仮決め）")
                 c_index = True
-                note(line_no, "C軸割り出し（回転は図に反映しません）")
 
         new_cycle = next((int(g) for g in gcodes if 81 <= g <= 89), None)
         if new_cycle is not None:
@@ -343,10 +357,12 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
         # 円弧
         space = current_space()
         p0 = _point(space, pos)
+        c0 = pos.get("C")
         pos.update(target)
         p1 = _point(space, pos)
         if p0 is None or p1 is None:
             continue
+        c1 = pos.get("C")
         ia, ib, iw, wa, wb = _arc_plane(space, plane)
         clockwise = motion == 2
         if "R" in values:
@@ -356,15 +372,44 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
             center = (p0[ia] + values.get(wa, 0.0), p0[ib] + values.get(wb, 0.0))
             full = True
         if center is None:
-            emit(line_no, "feed", [p0, p1])
+            emit(line_no, "feed", [p0, p1], c0, c1)
             continue
-        emit(line_no, "feed", arc_points(p0, p1, ia, ib, iw, center, clockwise, full))
+        emit(line_no, "feed", arc_points(p0, p1, ia, ib, iw, center, clockwise, full), c0, c1)
 
     polar_count = sum(1 for space, _ in segments if space == SPACE_POLAR)
     shown = SPACE_POLAR if polar_count else base_space
     kept = [seg for space, seg in segments if space == shown]
-    return SimResult(space=shown, segments=kept, notices=notices,
-                     dropped=len(segments) - len(kept), c_index=c_index)
+    dropped = len(segments) - len(kept)
+    if shown == SPACE_MILL and c_index:
+        shown = SPACE_MILL_C
+        for seg in kept:
+            seg.pts = _rotate_by_c(seg)
+    return SimResult(space=shown, segments=kept, notices=notices, dropped=dropped, c_index=c_index)
+
+
+def _rotate_by_c(seg: Segment) -> list:
+    """ミーリングの点 (X半径, Y, Z) を、C 角度ぶん戻してワーク基準 (X, Y, Z, 機械X半径) にする。
+    移動中に C が変わる場合は、移動距離に比例して C を補間する。"""
+    c0 = seg.c0 or 0.0
+    c1 = seg.c1 if seg.c1 is not None else c0
+    pts = seg.pts
+    if abs(c1 - c0) > 1e-9 and len(pts) == 2:
+        # 直線移動中に C が回るときは 2° ごとに分けて、回転の軌跡を描く
+        n = min(720, max(2, math.ceil(abs(c1 - c0) / 2.0)))
+        a, b = pts
+        pts = [tuple(x + (y - x) * k / n for x, y in zip(a, b)) for k in range(n + 1)]
+    total = _polyline_length(pts)
+    out = []
+    acc = 0.0
+    for i, p in enumerate(pts):
+        if i:
+            acc += math.dist(pts[i - 1], p)
+        f = acc / total if total > 0 else i / max(len(pts) - 1, 1)
+        theta = -math.radians(C_SIGN * (c0 + (c1 - c0) * f))
+        x, y, z = p[0], p[1], p[2]
+        out.append((x * math.cos(theta) - y * math.sin(theta),
+                    x * math.sin(theta) + y * math.cos(theta), z, x))
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -432,6 +477,14 @@ class PathView(tk.Canvas):
         self.create_line(x0 - big, y0, x0 + big, y0, fill=AXIS, dash=(6, 4) if center_line else None, tags=("world", "axis"))
         self.create_line(x0, y0 - big, x0, y0 + big, fill=AXIS, tags=("world", "axis"))
         for seg in segments:
+            if seg.kind == "feed" and self.is_point(seg):
+                # この図では動きが点になる切削（正面から見た穴あけなど）は丸印で示す
+                x, y = self.to_screen(seg.pts[0])
+                color = COLORS[(seg.kind, True)]
+                item = self.create_oval(x - 4, y - 4, x + 4, y + 4, outline=color, fill=color, width=1,
+                                        tags=("world", "seg"))
+                self.items.append(item)
+                continue
             coords = []
             for p in seg.pts:
                 coords.extend(self.to_screen(p))
@@ -440,8 +493,18 @@ class PathView(tk.Canvas):
             self.items.append(item)
         self._draw_overlay_text()
 
+    def paint(self, item, color) -> None:
+        if self.type(item) == "oval":
+            self.itemconfigure(item, fill=color, outline=color)
+        else:
+            self.itemconfigure(item, fill=color)
+
+    def is_point(self, seg) -> bool:
+        a0, b0 = seg.pts[0][self.ia], seg.pts[0][self.ib]
+        return all(abs(p[self.ia] - a0) < 1e-6 and abs(p[self.ib] - b0) < 1e-6 for p in seg.pts)
+
     def _world(self, a, b):
-        p = [0.0, 0.0, 0.0]
+        p = [0.0, 0.0, 0.0, 0.0]
         p[self.ia], p[self.ib] = a, b
         return p
 
@@ -494,17 +557,14 @@ class PathView(tk.Canvas):
             self.event_generate("<<NeedFit>>")
 
 
-class ToolpathWindow(tk.Toplevel):
+class ToolpathPanel(tk.Frame):
+    """メイン画面に埋め込む軌跡パネル。on_close があれば右上に「閉じる」ボタンを出す。"""
     PLAY_SECONDS = 20.0     # 1倍速でブロック全体を再生する時間
     TICK_MS = 30
 
-    def __init__(self, master, on_jump, on_follow, button_factory=None):
-        super().__init__(master)
-        self.title("軌跡シミュレーター")
-        self.configure(bg=PANEL)
-        self.geometry("980x680")
-        self.minsize(640, 460)
-        self.on_jump, self.on_follow = on_jump, on_follow
+    def __init__(self, master, on_jump, on_follow, on_close=None, button_factory=None):
+        super().__init__(master, bg=PANEL)
+        self.on_jump, self.on_follow, self.on_close = on_jump, on_follow, on_close
         self._button = button_factory or (lambda parent, text, cmd: tk.Button(parent, text=text, command=cmd))
         self._key = None
         self.result: SimResult | None = None
@@ -528,10 +588,14 @@ class ToolpathWindow(tk.Toplevel):
                        selectcolor=BG, activebackground=PANEL, activeforeground=TEXT,
                        font=("Yu Gothic UI", 9)).pack(side="right")
         self._button(top, "全体表示", self.fit).pack(side="right", padx=8)
+        if on_close is not None:
+            self._button(top, "✕ 閉じる", on_close).pack(side="right", padx=(0, 8))
 
         self.notice_var = tk.StringVar()
-        tk.Label(self, textvariable=self.notice_var, bg=PANEL, fg=HILITE, anchor="w", justify="left",
-                 font=("Yu Gothic UI", 9), wraplength=940).pack(fill="x", padx=14)
+        notice = tk.Label(self, textvariable=self.notice_var, bg=PANEL, fg=HILITE, anchor="w", justify="left",
+                          font=("Yu Gothic UI", 9), wraplength=600)
+        notice.pack(fill="x", padx=14)
+        notice.bind("<Configure>", lambda e: notice.configure(wraplength=max(200, e.width - 8)))
 
         self.view_frame = tk.Frame(self, bg=PANEL)
         self.view_frame.pack(fill="both", expand=True, padx=12, pady=6)
@@ -561,8 +625,6 @@ class ToolpathWindow(tk.Toplevel):
                  font=("Consolas", 9)).pack(fill="x", padx=14, pady=(0, 8))
         self.speed_var.trace_add("write", lambda *_: self._update_speed_label())
         self._update_speed_label()
-        self.bind("<space>", lambda e: self.toggle_play())
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
 
     # ---- 外部から ----
     def set_block(self, label: str, rows, mode: str) -> None:
@@ -573,7 +635,8 @@ class ToolpathWindow(tk.Toplevel):
         self.stop()
         self.result = simulate_block(list(rows), mode)
         res = self.result
-        names = {SPACE_TURN: "旋削", SPACE_MILL: "ミーリング", SPACE_POLAR: "極座標補間（G112）"}
+        names = {SPACE_TURN: "旋削", SPACE_MILL: "ミーリング", SPACE_POLAR: "極座標補間（G112）",
+                 SPACE_MILL_C: "ミーリング（C割り出し）"}
         self.title_var.set(f"{label}   {names[res.space]}   移動 {len(res.segments)} 本")
         msgs = [f"{ln}行: {msg}" for ln, msg in res.notices]
         if res.dropped:
@@ -639,7 +702,7 @@ class ToolpathWindow(tk.Toplevel):
         for v in self.views:
             for i, item in enumerate(v.items):
                 seg = self.result.segments[i]
-                v.itemconfigure(item, fill=COLORS[(seg.kind, i < self._done)])
+                v.paint(item, COLORS[(seg.kind, i < self._done)])
 
     def _set_done(self, new_done):
         if self.result is None or new_done == self._done:
@@ -648,7 +711,7 @@ class ToolpathWindow(tk.Toplevel):
         for v in self.views:
             for i in range(lo, hi):
                 seg = self.result.segments[i]
-                v.itemconfigure(v.items[i], fill=COLORS[(seg.kind, i < new_done)])
+                v.paint(v.items[i], COLORS[(seg.kind, i < new_done)])
         self._done = new_done
 
     def _draw_highlight(self):
@@ -659,6 +722,10 @@ class ToolpathWindow(tk.Toplevel):
         for v in self.views:
             for seg in self.result.segments:
                 if seg.line_no == self._hl_line:
+                    if v.is_point(seg):
+                        x, y = v.to_screen(seg.pts[0])
+                        v.create_oval(x - 6, y - 6, x + 6, y + 6, outline=HILITE, width=3, tags=("world", "hl"))
+                        continue
                     coords = []
                     for p in seg.pts:
                         coords.extend(v.to_screen(p))
@@ -713,6 +780,8 @@ class ToolpathWindow(tk.Toplevel):
             return [("Z", 0), ("X(半径)", 1)]
         if self.result.space == SPACE_POLAR:
             return [("X(半径)", 0), ("C", 1), ("Z", 2)]
+        if self.result.space == SPACE_MILL_C:
+            return [("ワークX", 0), ("ワークY", 1), ("Z", 2)]
         return [("X(半径)", 0), ("Y", 1), ("Z", 2)]
 
     # ---- 再生 ----

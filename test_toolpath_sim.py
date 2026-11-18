@@ -121,11 +121,50 @@ assert "旋削固定サイクルは未対応です" in msgs and "変数・マク
 assert "G43.4（同時5軸）は未対応です" in msgs
 
 # ---- 画面 ----
+# ---- C 軸割り出し: ワーク基準の端面図に回して描く ----
+CIDX = """\
+N3
+G98G17
+G0C0
+X100.Y0Z5.
+G83Z-10.R0F100.
+G80
+G0C90.
+G83Z-10.R0F100.
+G80
+G0C180.
+G87X60.R0F100.
+G80
+M1
+"""
+r = t.simulate_block(rows(CIDX), "MILL")
+assert r.space == t.SPACE_MILL_C and r.c_index
+assert [msg for _, msg in r.notices] == ["C軸割り出しをワーク基準で描画（C+ の回転方向は仮決め）"]
+hole0 = [s for s in r.segments if s.line_no == 5]
+hole90 = [s for s in r.segments if s.line_no == 8]
+side180 = [s for s in r.segments if s.line_no == 11]
+def near(p, q):
+    return all(abs(a - b) < 1e-9 for a, b in zip(p, q))
+assert near(end(hole0[0]), (50.0, 0.0, -10.0, 50.0))          # C0: そのまま
+assert near(hole90[0].pts[-1], (0.0, -50.0, -10.0, 50.0))      # C90: ワーク基準では -90° 側（C_SIGN=+1）
+assert near(side180[0].pts[-1], (-30.0, 0.0, 5.0, 30.0))       # C180 の側面穴あけ（X 方向）
+assert near(side180[0].pts[0], (-50.0, 0.0, 5.0, 50.0))
+# C を動かしながらの切削は円弧状になる（補間）
+r = t.simulate_block(rows("N1\nG98G17\nG0X100.Y0Z0C0\nG1C90.F100.\n"), "MILL")
+sweep = r.segments[-1]
+assert {round(math.hypot(p[0], p[1]), 6) for p in sweep.pts} == {50.0}
+assert near(sweep.pts[-1][:2], (0.0, -50.0))
+# C0 だけなら従来どおりのミーリング表示
+assert t.simulate_block(rows(DRILL), "MILL").space == t.SPACE_MILL
+
 root = tk.Tk()
 root.withdraw()
 jumps, follows = [], []
-win = t.ToolpathWindow(root, on_jump=jumps.append, on_follow=follows.append)
-win.geometry("900x600")
+closed = []
+top = tk.Toplevel(root)
+top.geometry("900x600")
+win = t.ToolpathPanel(top, on_jump=jumps.append, on_follow=follows.append, on_close=lambda: closed.append(1))
+win.pack(fill="both", expand=True)
 win.set_block("N1", rows(POLAR), "MILL")
 root.update()
 assert len(win.views) == 2 and all(len(v.items) == len(win.result.segments) for v in win.views)
@@ -171,6 +210,12 @@ assert jumps and jumps[-1] == win.result.segments[5].line_no, jumps
 win.set_block("N1", rows(TURN), "TURN")
 root.update()
 assert len(win.views) == 1 and win.result.space == t.SPACE_TURN
+win.set_block("N3", rows(CIDX), "MILL")
+root.update()
+assert len(win.views) == 2 and win.views[1].ia == 3      # 2画面目は機械座標の X–Z
+win.highlight_line(8)
+win.fit()
 win.destroy()
+top.destroy()
 root.destroy()
-print("PASS: polar (diameter X, radius I), turning U/W/G28, R arcs, drilling R/return, notices, window play/step/drag/zoom/fit/pick")
+print("PASS: C-index (face/side, C sweep), polar (diameter X, radius I), turning U/W/G28, R arcs, drilling R/return, notices, window play/step/drag/zoom/fit/pick")

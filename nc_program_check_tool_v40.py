@@ -1979,29 +1979,97 @@ class NcCheckApp:
         bar.pack(fill="x")
         return bar.hint
 
-    def _open_toolpath_window(self) -> None:
-        """簡易軌跡シミュレーター（カーソルのある N ブロックを描画）を開く"""
-        win = getattr(self, "_toolpath_window", None)
-        if win is not None and win.winfo_exists():
-            win.deiconify()
-            win.lift()
+    # ===== 軌跡モード（NCプログラム 30% ｜ 軌跡 70%）=====
+    TOOLPATH_PROGRAM_RATIO = 0.30
+
+    def _active_toolpath_panel(self):
+        """軌跡モード中なら軌跡パネル、そうでなければ None"""
+        if not getattr(self, "_toolpath_mode", False):
+            return None
+        panel = getattr(self, "_toolpath_panel", None)
+        if panel is None or not panel.winfo_exists():
+            return None
+        return panel
+
+    def _toggle_toolpath_mode(self) -> None:
+        if getattr(self, "_toolpath_mode", False):
+            self._exit_toolpath_mode()
         else:
-            from toolpath_sim import ToolpathWindow
+            self._enter_toolpath_mode()
+
+    def _enter_toolpath_mode(self) -> None:
+        """「軌跡」ボタン: 画面を NCプログラム｜軌跡 の2ペインに組み替える"""
+        if getattr(self, "_toolpath_mode", False):
+            return
+        body = self._main_panes
+        panes = [body.nametowidget(str(p)) for p in body.panes()]
+        # 実際の幅で覚えておく（起動時の初期幅ではなく、ユーザーが動かした後の幅に戻すため）
+        self._saved_pane_layout = [
+            (w, {"minsize": body.panecget(w, "minsize"), "stretch": body.panecget(w, "stretch"),
+                 "width": max(1, w.winfo_width())}) for w in panes
+        ]
+        self._saved_sashes = [body.sash_coord(i)[0] for i in range(len(panes) - 1)]
+        if getattr(self, "_toolpath_panel", None) is None or not self._toolpath_panel.winfo_exists():
+            from toolpath_sim import ToolpathPanel
 
             def button(parent, text, command):
                 return SmoothButton(parent, text=text, command=command, bg="#1C2C3B", fg="#E1EBF4",
                                     activebackground="#29465B", activeforeground="#FFFFFF",
                                     font=("Yu Gothic UI", 10), cursor="hand2")
 
-            self._toolpath_window = ToolpathWindow(self.root, on_jump=self.jump_to_input_line,
-                                                   on_follow=self._toolpath_follow_line, button_factory=button)
+            self._toolpath_panel = ToolpathPanel(body, on_jump=self.jump_to_input_line,
+                                                 on_follow=self._toolpath_follow_line,
+                                                 on_close=self._exit_toolpath_mode, button_factory=button)
+            round_native(self._toolpath_panel, 8)
+        for w in panes:
+            if w is not self._input_panel:
+                body.forget(w)
+        body.add(self._toolpath_panel, stretch="always", minsize=400)
+        self._toolpath_mode = True
+        self.root.update_idletasks()
+        width = body.winfo_width()
+        if width > 1:
+            body.sash_place(0, int(width * self.TOOLPATH_PROGRAM_RATIO), 0)
+        self._refresh_mascot_position()
         self._toolpath_after = None
         self._update_toolpath_now()
 
+    def _exit_toolpath_mode(self) -> None:
+        """軌跡を閉じる: 元の4ペイン構成と幅に戻す"""
+        if not getattr(self, "_toolpath_mode", False):
+            return
+        body = self._main_panes
+        panel = getattr(self, "_toolpath_panel", None)
+        if panel is not None and panel.winfo_exists():
+            panel.stop()
+            body.forget(panel)
+        for w, _ in self._saved_pane_layout:
+            if str(w) in [str(p) for p in body.panes()]:
+                body.forget(w)
+        for w, opts in self._saved_pane_layout:
+            body.add(w, **opts)
+        self._toolpath_mode = False
+        self.root.update_idletasks()
+        self._restore_sashes()
+        self.root.after_idle(self._restore_sashes)
+        self._refresh_mascot_position()
+
+    def _restore_sashes(self) -> None:
+        body = self._main_panes
+        for i, x in enumerate(getattr(self, "_saved_sashes", [])):
+            try:
+                body.sash_place(i, x, 0)
+            except tk.TclError:
+                pass
+
+    def _refresh_mascot_position(self) -> None:
+        mascot = getattr(self, "_mascot", None)
+        if mascot is not None:
+            self.root.after_idle(mascot.follow)
+
     def _update_toolpath_for_current_line(self) -> None:
-        """カーソル移動・編集のたびに呼ばれる。軌跡ウィンドウが開いていれば少し待って更新する"""
-        win = getattr(self, "_toolpath_window", None)
-        if win is None or not win.winfo_exists():
+        """カーソル移動・編集のたびに呼ばれる。軌跡モード中なら少し待って更新する"""
+        if self._active_toolpath_panel() is None:
             return
         if getattr(self, "_toolpath_after", None) is not None:
             self.root.after_cancel(self._toolpath_after)
@@ -2009,8 +2077,8 @@ class NcCheckApp:
 
     def _update_toolpath_now(self) -> None:
         self._toolpath_after = None
-        win = getattr(self, "_toolpath_window", None)
-        if win is None or not win.winfo_exists():
+        win = self._active_toolpath_panel()
+        if win is None:
             return
         try:
             cur_line = int(self.input_text.index(tk.INSERT).split(".")[0])
@@ -2043,8 +2111,8 @@ class NcCheckApp:
         self._apply_linenumber_highlights()
         self._update_block_info_for_current_line()
         self._update_gm_legend_for_current_line()
-        win = getattr(self, "_toolpath_window", None)
-        if win is not None and win.winfo_exists():
+        win = self._active_toolpath_panel()
+        if win is not None:
             win.highlight_line(line_no)
 
     def _open_offset_comment_preview(self) -> None:
@@ -2111,7 +2179,7 @@ class NcCheckApp:
         self._make_action_button(toolbar, "置換 (Ctrl+H)", self._open_replace_dialog).pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "NCコード挿入支援", self._open_macro_assist_dialog).pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "補正コメント", self._open_offset_comment_preview).pack(side="left", padx=(0, 7))
-        self._make_action_button(toolbar, "軌跡", self._open_toolpath_window).pack(side="left", padx=(0, 7))
+        self._make_action_button(toolbar, "軌跡", self._toggle_toolpath_mode).pack(side="left", padx=(0, 7))
         self._undo_button = self._make_action_button(toolbar, "↶ 元に戻す", self._do_undo)
         self._undo_button.pack(side="left", padx=(0, 7))
         self._make_action_button(toolbar, "入力をクリア", self.clear_input).pack(side="left", padx=(0, 7))
@@ -2161,6 +2229,7 @@ class NcCheckApp:
 
         self._main_panes = body
         self._block_panel = block_info_panel
+        self._input_panel = input_panel
         self._build_n_index_panel(n_index_panel)
         self._build_block_info_panel(block_info_panel)
         self._build_input_panel(input_panel)
