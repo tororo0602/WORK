@@ -118,12 +118,14 @@ RESULT_STYLE_MAP = {
     "summary_decimal_error": {"background": "#0E241C", "foreground": "#8FF0C7", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "summary_radius": {"background": "#101E16", "foreground": "#8FE8B8", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "summary_tailstock_macro_missing": {"background": "#221530", "foreground": "#D9C2FF", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "summary_tool_offset_mismatch": {"background": "#2A2008", "foreground": "#FDE68A", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "summary_duplicate_n": {"background": "#16202E", "foreground": "#B7D4F0", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "finding_overspeed": {"background": "#3A121C", "foreground": "#FFD0DA", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "finding_overfeed": {"background": "#362A0C", "foreground": "#FDE9A8", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "finding_tcp": {"background": "#12233A", "foreground": "#CFE6F7", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "finding_decimal_error": {"background": "#123328", "foreground": "#7FF0CB", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "finding_tailstock_macro_missing": {"background": "#241A34", "foreground": "#DCC4FF", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
+    "finding_tool_offset_mismatch": {"background": "#2E2410", "foreground": "#FDE68A", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "finding_default": {"background": "#141B24", "foreground": "#C7D4DE", "lmargin1": 10, "lmargin2": 10, "spacing1": 2, "spacing3": 2},
     "block_label": {"background": "#142433", "foreground": "#A9E4DB", "font": ("Consolas", 11, "bold"), "spacing1": 8, "spacing3": 2, "lmargin1": 6, "lmargin2": 6},
     "tool_t": {"background": "#101B26", "foreground": "#88DDFF", "font": ("Consolas", 11, "bold"), "lmargin1": 14, "lmargin2": 14},
@@ -144,6 +146,7 @@ TOC_GROUPS: list[dict] = [
     {"kind": "decimal_error", "label": "小数点間違い", "color": "#F0D060", "sev": "err"},
     {"kind": "tailstock_macro_missing", "label": "芯押しマクロ忘れ", "color": VIOLET_COLOR, "sev": "err"},
     {"kind": "tcp", "label": "G43.4 (TCP)", "color": INFO_COLOR, "sev": "wrn"},
+    {"kind": "tool_offset_mismatch", "label": "T/H補正不一致", "color": WARN_COLOR, "sev": "wrn"},
     {"kind": "duplicate_n", "label": "N番号重複", "color": ACCENT, "sev": "wrn"},
     {"kind": "radius_comp_n", "label": "径補正使用N", "color": TEXT_MUTED, "sev": "info"},
 ]
@@ -341,6 +344,7 @@ class SummaryData:
     decimal_error_count: int = 0
     radius_comp_n_count: int = 0
     tailstock_macro_missing_count: int = 0
+    tool_offset_mismatch_count: int = 0
     duplicate_n_count: int = 0
     duplicate_n_details: list = field(default_factory=list)  # [(n_label, [start_line_no, ...]), ...]
 
@@ -748,6 +752,82 @@ def detect_tailstock_macro_missing_findings(lines: list[str]) -> list[Finding]:
             findings.append(Finding(line_no=line_no, text="芯押しマクロ忘れ", kind="tailstock_macro_missing"))
             m25_seen = False
 
+    return findings
+
+
+# H補正番号がこの値以上ならパーマネント工具とみなし、T番号との一致チェックを行わない
+PERMANENT_TOOL_H_MIN = 39
+
+
+def extract_g43_h_list(block_rows: list[tuple[int, str]]) -> list[tuple[int, int]]:
+    """G43（G43.4含む）行にある H 補正番号を (H番号, 行番号) で返す。H0・G65行・コメントは除外。"""
+    result: list[tuple[int, int]] = []
+    for line_no, line in block_rows:
+        stripped = line.strip()
+        if not stripped or is_comment_line(stripped):
+            continue
+        check_target = strip_inline_comments(stripped)
+        if is_g65_line(check_target):
+            continue
+        compact = normalize_fragment(check_target).upper()
+        if not re.search(r"G43(?!\d)", compact):
+            continue
+        for match in re.finditer(r"H(\d+)", compact):
+            num = int(match.group(1))
+            if num != 0:
+                result.append((num, line_no))
+    return result
+
+
+def detect_tool_offset_mismatch_findings(lines: list[str]) -> list[Finding]:
+    """NTX用: G361で交換したT番号の下2桁と G43 の H 補正番号を照合する。
+
+    - Tの下2桁とHが違う（H39以上はパーマネント工具としてスルー）
+    - G361で工具交換したのに G43 H が無い
+    - 同一ブロックに G43 の H が複数種類ある
+    """
+    findings: list[Finding] = []
+    for block in split_n_blocks(lines):
+        g361_line_no = None
+        for line_no, line in block.rows:
+            stripped = line.strip()
+            if not stripped or is_comment_line(stripped):
+                continue
+            compact = normalize_fragment(strip_inline_comments(stripped)).upper()
+            if re.search(r"G361(?!\d)", compact):
+                g361_line_no = line_no
+                break
+        if g361_line_no is None:
+            continue
+
+        t_number, t_line_no = extract_t_before_g36x(block.rows)
+        h_list = extract_g43_h_list(block.rows)
+        label = block.n_label
+
+        if not h_list:
+            val = t_number or "T?"
+            findings.append(Finding(line_no=g361_line_no, text=f"{label} {val} — G43のH補正なし",
+                                    kind="tool_offset_mismatch", reason="G43のH補正なし"))
+            continue
+
+        distinct: list[int] = []
+        for h_num, h_line_no in h_list:
+            if h_num not in distinct:
+                distinct.append(h_num)
+                if len(distinct) == 2:
+                    names = "/".join(f"H{h:02d}" for h in distinct)
+                    findings.append(Finding(line_no=h_line_no, text=f"{label} {names} — H補正が複数",
+                                            kind="tool_offset_mismatch", reason="H補正が複数"))
+
+        digits = t_number[1:] if t_number else ""
+        if len(digits) < 4:
+            continue
+        expected = int(digits[2:4])
+        for h_num, h_line_no in h_list:
+            if h_num >= PERMANENT_TOOL_H_MIN or h_num == expected:
+                continue
+            findings.append(Finding(line_no=h_line_no, text=f"{label} {t_number}↔H{h_num:02d} — T/H補正不一致",
+                                    kind="tool_offset_mismatch", reason=f"T番号の下2桁はH{expected:02d}"))
     return findings
 
 
@@ -1220,6 +1300,7 @@ def collect_program_findings(lines: list[str], settings: ThresholdSettings) -> l
     heuristic = ModeHeuristic()
 
     findings.extend(detect_tailstock_macro_missing_findings(lines))
+    findings.extend(detect_tool_offset_mismatch_findings(lines))
     for line_no, raw in enumerate(lines, 1):
         for start, end, reason in check_input_syntax(raw):
             findings.append(Finding(line_no, f"{raw[start:end]} — {reason}（{start + 1}列）",
@@ -1287,6 +1368,8 @@ def build_report(program_text: str, settings: ThresholdSettings) -> ReportData:
             summary.decimal_error_count += 1
         elif finding.kind == "tailstock_macro_missing":
             summary.tailstock_macro_missing_count += 1
+        elif finding.kind == "tool_offset_mismatch":
+            summary.tool_offset_mismatch_count += 1
 
     radius_comp_n_count = 0
     blocks = split_n_blocks(lines)
@@ -1312,6 +1395,7 @@ def build_report(program_text: str, settings: ThresholdSettings) -> ReportData:
     report_lines.append(ReportLine(f"小数点間違い: {summary.decimal_error_count}件", style_key="summary_decimal_error"))
     report_lines.append(ReportLine(f"径補正使用N: {summary.radius_comp_n_count}件", style_key="summary_radius"))
     report_lines.append(ReportLine(f"芯押しマクロ忘れ: {summary.tailstock_macro_missing_count}件", style_key="summary_tailstock_macro_missing"))
+    report_lines.append(ReportLine(f"T/H補正不一致: {summary.tool_offset_mismatch_count}件", style_key="summary_tool_offset_mismatch"))
     report_lines.append(ReportLine(f"N番号重複: {summary.duplicate_n_count}件", style_key="summary_duplicate_n"))
     report_lines.append(ReportLine(""))
 
@@ -1323,6 +1407,7 @@ def build_report(program_text: str, settings: ThresholdSettings) -> ReportData:
         "input_syntax": "finding_input_syntax",
         "decimal_error": "finding_decimal_error",
         "tailstock_macro_missing": "finding_tailstock_macro_missing",
+        "tool_offset_mismatch": "finding_tool_offset_mismatch",
     }
     for finding in findings:
         report_lines.append(ReportLine(f"{finding.line_no}行{finding.text}", finding.line_no, finding_style_map.get(finding.kind, "finding_default")))
@@ -3230,6 +3315,8 @@ class NcCheckApp:
             return finding.text, "小数点の誤りを検出"
         if finding.kind == "tailstock_macro_missing":
             return "M25→G361", finding.text
+        if finding.kind == "tool_offset_mismatch":
+            return finding.text.split(" — ")[0], finding.reason
         return finding.text, ""
 
     def _collect_duplicate_n_hits(self, report: ReportData) -> list[dict]:
@@ -3250,7 +3337,7 @@ class NcCheckApp:
         return hits
 
     def _build_toc_groups(self, report: ReportData, program_lines: list[str]) -> list[dict]:
-        finding_kinds = {"input_syntax", "overspeed", "overfeed", "decimal_error", "tailstock_macro_missing", "tcp"}
+        finding_kinds = {"input_syntax", "overspeed", "overfeed", "decimal_error", "tailstock_macro_missing", "tcp", "tool_offset_mismatch"}
         hits_by_kind: dict[str, list[dict]] = {k: [] for k in finding_kinds}
         for finding in report.findings:
             if finding.kind in hits_by_kind:
@@ -4037,6 +4124,7 @@ def generate_first_article_excel(nc_text: str, output_path: str, file_name: str 
         elif f.kind == "input_syntax": summary.input_syntax_count += 1
         elif f.kind == "decimal_error": summary.decimal_error_count += 1
         elif f.kind == "tailstock_macro_missing": summary.tailstock_macro_missing_count += 1
+        elif f.kind == "tool_offset_mismatch": summary.tool_offset_mismatch_count += 1
     for block in blocks:
         if block_radius_comp_line(block.rows) is not None:
             summary.radius_comp_n_count += 1
@@ -4145,8 +4233,8 @@ def generate_first_article_excel(nc_text: str, output_path: str, file_name: str 
         sc(ws, 7, ci, ht, font=hf, fill=hfl, alignment=ha, border=tb)
     ws.row_dimensions[7].height = 28
 
-    kl_map = {"input_syntax":"入力ミス","overspeed":"回転数超え","overfeed":"送り超え","tcp":"G43.4","decimal_error":"小数点間違い","tailstock_macro_missing":"芯押しマクロ忘れ"}
-    kc_map = {"input_syntax":XRT,"overspeed":XRT,"overfeed":XAT,"tcp":XPT,"decimal_error":XBT,"tailstock_macro_missing":XPT}
+    kl_map = {"input_syntax":"入力ミス","overspeed":"回転数超え","overfeed":"送り超え","tcp":"G43.4","decimal_error":"小数点間違い","tailstock_macro_missing":"芯押しマクロ忘れ","tool_offset_mismatch":"T/H補正不一致"}
+    kc_map = {"input_syntax":XRT,"overspeed":XRT,"overfeed":XAT,"tcp":XPT,"decimal_error":XBT,"tailstock_macro_missing":XPT,"tool_offset_mismatch":XAT}
 
     excel_items = [(info["line_min"], "n", info) for info in block_info_list]
     excel_items.extend((line_no, "grip", None)
@@ -4209,7 +4297,7 @@ def generate_first_article_excel(nc_text: str, output_path: str, file_name: str 
         ws.row_dimensions[row].height = 28; row += 1
         for idx, f in enumerate(findings, start=1):
             kl = kl_map.get(f.kind, f.kind); fc = kc_map.get(f.kind, XRT)
-            bg = {"overspeed":XRB,"overfeed":XAB,"tcp":XPB,"decimal_error":XBB,"tailstock_macro_missing":XPB}.get(f.kind, XRB)
+            bg = {"overspeed":XRB,"overfeed":XAB,"tcp":XPB,"decimal_error":XBB,"tailstock_macro_missing":XPB,"tool_offset_mismatch":XAB}.get(f.kind, XRB)
             raw = lines[f.line_no - 1].rstrip() if 1 <= f.line_no <= len(lines) else ""
             if f.kind == "input_syntax":
                 raw += "\n" + f.text
