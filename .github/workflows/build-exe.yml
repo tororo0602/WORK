@@ -49,6 +49,9 @@ jobs:
           if ($p.HasExited) { throw "exe exited early with code $($p.ExitCode)" }
           Stop-Process -Id $p.Id -Force
           Write-Host "exe stayed up for 20s"
+          # 起動時に自動生成された設定ファイルは配布物に含めない（既存データの上書き防止）
+          Start-Sleep -Seconds 2
+          Remove-Item -ErrorAction SilentlyContinue dist/nc_program_check_tool_v40/gm_glossary.json, dist/nc_program_check_tool_v40/nc_macros.json
 
       - uses: actions/upload-artifact@v4
         with:
