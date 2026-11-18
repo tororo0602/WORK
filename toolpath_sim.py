@@ -65,6 +65,33 @@ class SimResult:
     notices: list = field(default_factory=list)   # [(行番号, メッセージ)]
     dropped: int = 0                # 表示空間が違うため省略した移動数
     c_index: bool = False
+    spindle: int = 1                # 1: 第一主軸 / 2: 第二主軸（表示を Z 反転・端面鏡写し）
+
+
+_SPINDLE2_RE = re.compile(r"M(304|203|204|245)(?!\d)")
+_SPINDLE1_RE = re.compile(r"M303(?!\d)")
+
+
+def spindle_of_block(rows, previous: int = 1) -> int:
+    """ブロックが第一/第二主軸どちら側か。M304/M203/M204/M245 → 2、M303 → 1、
+    どれも無ければ前のブロックの判定を引き継ぐ。ブロック内で複数あれば最後に出たものを採用。"""
+    side = previous
+    for _, line in rows:
+        code = re.sub(r"\s+", "", _strip_comments(line).upper())
+        hits = [(m.start(), 2) for m in _SPINDLE2_RE.finditer(code)] + \
+               [(m.start(), 1) for m in _SPINDLE1_RE.finditer(code)]
+        if hits:
+            side = max(hits)[1]
+    return side
+
+
+def view_flips(space: str, view_index: int, spindle: int) -> tuple[float, float]:
+    """第二主軸の表示反転 (横, 縦)。Z を反転し、端面図は鏡写しにする。"""
+    if spindle != 2:
+        return 1.0, 1.0
+    if space == SPACE_TURN:
+        return -1.0, 1.0                      # 横軸が Z
+    return (-1.0, 1.0) if view_index == 0 else (1.0, -1.0)   # 端面は左右鏡写し / X–Z は Z 反転
 
 
 def _strip_comments(line: str) -> str:
@@ -156,8 +183,9 @@ def _polyline_length(pts) -> float:
     return sum(math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
 
 
-def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
-    """N ブロックの行 [(行番号, 行)] を解釈して軌跡を作る。mode は "TURN" / "MILL" / ""。"""
+def simulate_block(rows: list[tuple[int, str]], mode: str = "", spindle: int = 1) -> SimResult:
+    """N ブロックの行 [(行番号, 行)] を解釈して軌跡を作る。mode は "TURN" / "MILL" / ""。
+    spindle=2（第二主軸）では C 割り出しの回転方向を逆にする。"""
     base_space = SPACE_TURN if mode == "TURN" else SPACE_MILL
     if not mode:
         joined = " ".join(_strip_comments(line).upper() for _, line in rows)
@@ -170,7 +198,7 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
     polar = False
     feed = None
     per_rev = base_space == SPACE_TURN
-    spindle = 0.0
+    spindle_speed = 0.0
     css = False
     rpm_limit = DEFAULT_RPM_LIMIT
     cycle = None            # {"code", "axis", "bottom", "r_inc"}
@@ -197,9 +225,9 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
         if css:
             x = pos.get("X")
             dia = max(abs(x) if x is not None else 50.0, 1.0)
-            rpm = min(spindle * 1000.0 / (math.pi * dia), rpm_limit) if spindle else 1000.0
+            rpm = min(spindle_speed * 1000.0 / (math.pi * dia), rpm_limit) if spindle_speed else 1000.0
         else:
-            rpm = spindle or 1000.0
+            rpm = spindle_speed or 1000.0
         return max(f * max(rpm, 1.0), 1.0)
 
     def emit(line_no: int, kind: str, pts, c0=None, c1=None) -> None:
@@ -293,7 +321,7 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
                 pos.update({"X": None, "Z": None})
             continue
         if "S" in values:
-            spindle = values["S"]
+            spindle_speed = values["S"]
         if "F" in values:
             feed = values["F"]
 
@@ -382,12 +410,14 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "") -> SimResult:
     dropped = len(segments) - len(kept)
     if shown == SPACE_MILL and c_index:
         shown = SPACE_MILL_C
+        sign = C_SIGN * (-1.0 if spindle == 2 else 1.0)
         for seg in kept:
-            seg.pts = _rotate_by_c(seg)
-    return SimResult(space=shown, segments=kept, notices=notices, dropped=dropped, c_index=c_index)
+            seg.pts = _rotate_by_c(seg, sign)
+    return SimResult(space=shown, segments=kept, notices=notices, dropped=dropped, c_index=c_index,
+                     spindle=spindle)
 
 
-def _rotate_by_c(seg: Segment) -> list:
+def _rotate_by_c(seg: Segment, sign: float = C_SIGN) -> list:
     """ミーリングの点 (X半径, Y, Z) を、C 角度ぶん戻してワーク基準 (X, Y, Z, 機械X半径) にする。
     移動中に C が変わる場合は、移動距離に比例して C を補間する。"""
     c0 = seg.c0 or 0.0
@@ -405,7 +435,7 @@ def _rotate_by_c(seg: Segment) -> list:
         if i:
             acc += math.dist(pts[i - 1], p)
         f = acc / total if total > 0 else i / max(len(pts) - 1, 1)
-        theta = -math.radians(C_SIGN * (c0 + (c1 - c0) * f))
+        theta = -math.radians(sign * (c0 + (c1 - c0) * f))
         x, y, z = p[0], p[1], p[2]
         out.append((x * math.cos(theta) - y * math.sin(theta),
                     x * math.sin(theta) + y * math.cos(theta), z, x))
@@ -434,9 +464,10 @@ COLORS = {
 class PathView(tk.Canvas):
     """1 画面分の描画。ワールド座標 → 画面: sx = ox + s*wx, sy = oy - s*wy"""
 
-    def __init__(self, master, title, ia, ib, label_a, label_b, on_pick):
+    def __init__(self, master, title, ia, ib, label_a, label_b, on_pick, flips=(1.0, 1.0)):
         super().__init__(master, bg=BG, highlightthickness=1, highlightbackground=GRID, bd=0)
         self.title, self.ia, self.ib = title, ia, ib
+        self.fa, self.fb = flips                 # 表示だけの反転（第二主軸）
         self.label_a, self.label_b = label_a, label_b
         self.on_pick = on_pick
         self.s, self.ox, self.oy = 1.0, 0.0, 0.0
@@ -452,7 +483,7 @@ class PathView(tk.Canvas):
         self.bind("<Configure>", self._on_resize)
 
     def to_screen(self, p):
-        return self.ox + self.s * p[self.ia], self.oy - self.s * p[self.ib]
+        return self.ox + self.s * self.fa * p[self.ia], self.oy - self.s * self.fb * p[self.ib]
 
     def build(self, segments, center_line=False):
         self.delete("all")
@@ -460,8 +491,8 @@ class PathView(tk.Canvas):
         w, h = max(self.winfo_width(), 50), max(self.winfo_height(), 50)
         pts = [p for seg in segments for p in seg.pts]
         if pts:
-            a = [p[self.ia] for p in pts]
-            b = [p[self.ib] for p in pts]
+            a = [self.fa * p[self.ia] for p in pts]
+            b = [self.fb * p[self.ib] for p in pts]
             amin, amax, bmin, bmax = min(a), max(a), min(b), max(b)
         else:
             amin, amax, bmin, bmax = -10.0, 10.0, -10.0, 10.0
@@ -511,7 +542,8 @@ class PathView(tk.Canvas):
     def _draw_overlay_text(self):
         self.delete("hud")
         self.create_text(10, 8, text=self.title, anchor="nw", fill=TEXT, font=("Yu Gothic UI", 10, "bold"), tags="hud")
-        self.create_text(10, 28, text=f"横: {self.label_a}   縦: {self.label_b}", anchor="nw", fill=MUTED,
+        flip = "（反転表示）" if (self.fa, self.fb) != (1.0, 1.0) else ""
+        self.create_text(10, 28, text=f"横: {self.label_a}   縦: {self.label_b}{flip}", anchor="nw", fill=MUTED,
                          font=("Yu Gothic UI", 9), tags="hud")
 
     def _apply(self, f, x, y):
@@ -627,17 +659,18 @@ class ToolpathPanel(tk.Frame):
         self._update_speed_label()
 
     # ---- 外部から ----
-    def set_block(self, label: str, rows, mode: str) -> None:
-        key = (label, tuple(rows), mode)
+    def set_block(self, label: str, rows, mode: str, spindle: int = 1) -> None:
+        key = (label, tuple(rows), mode, spindle)
         if key == self._key:
             return
         self._key = key
         self.stop()
-        self.result = simulate_block(list(rows), mode)
+        self.result = simulate_block(list(rows), mode, spindle)
         res = self.result
         names = {SPACE_TURN: "旋削", SPACE_MILL: "ミーリング", SPACE_POLAR: "極座標補間（G112）",
                  SPACE_MILL_C: "ミーリング（C割り出し）"}
-        self.title_var.set(f"{label}   {names[res.space]}   移動 {len(res.segments)} 本")
+        side = "   第二主軸（Z反転・端面鏡写し）" if res.spindle == 2 else ""
+        self.title_var.set(f"{label}   {names[res.space]}   移動 {len(res.segments)} 本{side}")
         msgs = [f"{ln}行: {msg}" for ln, msg in res.notices]
         if res.dropped:
             msgs.insert(0, f"G112 の外の移動 {res.dropped} 本は省略")
@@ -650,7 +683,8 @@ class ToolpathPanel(tk.Frame):
         self.views = []
         defs = SPACE_VIEWS[res.space]
         for col, (title, ia, ib, la, lb) in enumerate(defs):
-            view = PathView(self.view_frame, title, ia, ib, la, lb, self._pick)
+            view = PathView(self.view_frame, title, ia, ib, la, lb, self._pick,
+                            flips=view_flips(res.space, col, res.spindle))
             view.grid(row=0, column=col, sticky="nsew", padx=(0 if col == 0 else 6, 0))
             self.views.append(view)
             view.bind("<<NeedFit>>", lambda e: self._schedule_fit())

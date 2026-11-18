@@ -2085,8 +2085,12 @@ class NcCheckApp:
             lines = self.input_text.get("1.0", "end-1c").splitlines()
         except (tk.TclError, ValueError):
             return
+        from toolpath_sim import spindle_of_block
         block = None
+        spindle = 1
         for candidate in split_n_blocks(lines):
+            # 主軸の選択（M303/M304 など）はモーダルなので、前のブロックから引き継ぐ
+            spindle = spindle_of_block(candidate.rows, spindle)
             if candidate.rows and candidate.rows[0][0] <= cur_line <= candidate.rows[-1][0]:
                 block = candidate
                 break
@@ -2095,7 +2099,7 @@ class NcCheckApp:
         mode = detect_n_index_mode(block.rows)
         if not mode:
             mode = "TURN" if classify_block_mode(block.rows) == MODE_TURNING else "MILL"
-        win.set_block(block.n_label, block.rows, mode)
+        win.set_block(block.n_label, block.rows, mode, spindle)
         win.highlight_line(cur_line)
 
     def _toolpath_follow_line(self, line_no: int) -> None:

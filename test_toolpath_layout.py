@@ -21,6 +21,25 @@ G0C90.
 G83Z-10.R0F100.
 G80
 M1
+
+N3
+M304
+G97S300M203
+G99G18
+G0X50.Z10.
+G1Z-5.F0.1
+M1
+
+N4
+G0X60.Z10.
+G1Z-8.F0.1
+M1
+
+N5
+M303
+G0X40.Z5.
+G1Z-3.F0.1
+M1
 """
 
 import sys
@@ -63,6 +82,13 @@ assert app._toolpath_panel.result.space == "mill_c"
 seg = app._toolpath_panel.result.segments[0]
 app._toolpath_panel._pick(0)
 assert int(app.input_text.index(tk.INSERT).split(".")[0]) == seg.line_no
+
+# 第二主軸の判定はブロックをまたいで引き継ぐ（N3 で M304 → N4 も第二主軸 → N5 の M303 で第一主軸）
+for line, side in ((21, 2), (28, 2), (33, 1)):
+    app.jump_to_input_line(line)
+    root.after(300, root.quit)
+    root.mainloop()
+    assert app._toolpath_panel.result.spindle == side, (line, app._toolpath_panel._key[0])
 
 # 閉じる（パネルの「閉じる」と同じ処理）
 app._toolpath_panel.on_close()

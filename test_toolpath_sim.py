@@ -157,6 +157,23 @@ assert near(sweep.pts[-1][:2], (0.0, -50.0))
 # C0 だけなら従来どおりのミーリング表示
 assert t.simulate_block(rows(DRILL), "MILL").space == t.SPACE_MILL
 
+# ---- 第二主軸: 判定・C の向き・表示の反転 ----
+assert t.spindle_of_block(rows("N1\nM303\nG0X10.Z5.\n"), 2) == 1
+assert t.spindle_of_block(rows("N1\nM304\nG0X10.Z5.\n"), 1) == 2
+assert t.spindle_of_block(rows("N1\nG97S500M203\n"), 1) == 2
+assert t.spindle_of_block(rows("N1\nM245\n"), 1) == 2
+assert t.spindle_of_block(rows("N1\nG0X10.Z5.\n"), 2) == 2          # 指令が無ければ引き継ぐ
+assert t.spindle_of_block(rows("N1\nM304\nM303\n"), 1) == 1        # 後に出た方を採用
+assert t.spindle_of_block(rows("N1\n(M304)\n"), 1) == 1              # コメントは無視
+r2 = t.simulate_block(rows(CIDX), "MILL", spindle=2)
+assert r2.spindle == 2
+hole90_2 = [s for s in r2.segments if s.line_no == 8]
+assert near(hole90_2[0].pts[-1], (0.0, 50.0, -10.0, 50.0))     # C の向きが逆 → +90° 側
+assert t.view_flips(t.SPACE_TURN, 0, 2) == (-1.0, 1.0)          # 旋削: Z（横）反転
+assert t.view_flips(t.SPACE_MILL_C, 0, 2) == (-1.0, 1.0)        # 端面: 鏡写し
+assert t.view_flips(t.SPACE_MILL_C, 1, 2) == (1.0, -1.0)        # X–Z: Z（縦）反転
+assert t.view_flips(t.SPACE_POLAR, 1, 1) == (1.0, 1.0)
+
 root = tk.Tk()
 root.withdraw()
 jumps, follows = [], []
@@ -213,9 +230,21 @@ assert len(win.views) == 1 and win.result.space == t.SPACE_TURN
 win.set_block("N3", rows(CIDX), "MILL")
 root.update()
 assert len(win.views) == 2 and win.views[1].ia == 3      # 2画面目は機械座標の X–Z
+# 第二主軸: 同じブロックでも作り直し、旋削は Z が右→左に反転して描かれる
+win.set_block("N1", rows(TURN), "TURN", spindle=2)
+root.update()
+assert "第二主軸" in win.title_var.get()
+v = win.views[0]
+x_far, _ = v.to_screen((100.0, 137.0, 0.0))
+x_near, _ = v.to_screen((1.775, 137.0, 0.0))
+assert x_far < x_near                                     # Z100 が Z1.775 より左
+win.set_block("N1", rows(TURN), "TURN", spindle=1)
+root.update()
+v = win.views[0]
+assert v.to_screen((100.0, 137.0, 0.0))[0] > v.to_screen((1.775, 137.0, 0.0))[0]
 win.highlight_line(8)
 win.fit()
 win.destroy()
 top.destroy()
 root.destroy()
-print("PASS: C-index (face/side, C sweep), polar (diameter X, radius I), turning U/W/G28, R arcs, drilling R/return, notices, window play/step/drag/zoom/fit/pick")
+print("PASS: 2nd spindle (detect/C dir/flips), C-index (face/side, C sweep), polar (diameter X, radius I), turning U/W/G28, R arcs, drilling R/return, notices, window play/step/drag/zoom/fit/pick")
