@@ -2,7 +2,7 @@
 from types import SimpleNamespace
 import tkinter as tk
 from unittest.mock import patch
-import nc_program_check_tool_v39 as m
+import nc_program_check_tool_v40 as m
 import replacement_preview
 
 SAMPLE = """\

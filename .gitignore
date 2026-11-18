@@ -6,5 +6,5 @@ build/
 dist/
 *.cmd
 *_preview.png
-v39_exe_failure.png
+v40_exe_failure.png
 macros/

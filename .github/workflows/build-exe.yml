@@ -38,12 +38,12 @@ jobs:
           if ($failed.Count -gt 0) { throw "Failed: $($failed -join ', ')" }
 
       - name: Build exe
-        run: python -m PyInstaller --noconfirm nc_program_check_tool_v39.spec
+        run: python -m PyInstaller --noconfirm nc_program_check_tool_v40.spec
 
       - name: Smoke test (launch exe and keep it alive)
         shell: pwsh
         run: |
-          $exe = "dist/nc_program_check_tool_v39/nc_program_check_tool_v39.exe"
+          $exe = "dist/nc_program_check_tool_v40/nc_program_check_tool_v40.exe"
           $p = Start-Process -FilePath $exe -PassThru
           Start-Sleep -Seconds 20
           if ($p.HasExited) { throw "exe exited early with code $($p.ExitCode)" }
@@ -52,6 +52,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nc_program_check_tool_v39
-          path: dist/nc_program_check_tool_v39/
+          name: nc_program_check_tool_v40
+          path: dist/nc_program_check_tool_v40/
           retention-days: 30

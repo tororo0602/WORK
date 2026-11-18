@@ -1,5 +1,5 @@
 """T番号とH補正の一致チェック（tool_offset_mismatch）のテスト。"""
-import nc_program_check_tool_v39 as m
+import nc_program_check_tool_v40 as m
 
 SAMPLE = """\
 N1

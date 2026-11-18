@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import ImageGrab
 
 base = Path(__file__).resolve().parent
-exe = base.parent.parent / '最新版/nc_program_check_tool_v39/nc_program_check_tool_v39.exe'
+exe = base.parent.parent / '最新版/nc_program_check_tool_v40/nc_program_check_tool_v40.exe'
 user = ctypes.windll.user32
 user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
 user.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
@@ -38,18 +38,18 @@ while time.monotonic() < deadline and process.poll() is None:
     for hwnd, title in windows:
         rect = wintypes.RECT()
         user.GetWindowRect(hwnd, ctypes.byref(rect))
-        if title == 'NCプログラム確認ツール v39' and rect.right-rect.left >= 1000:
+        if title == 'NCプログラム確認ツール v40' and rect.right-rect.left >= 1000:
             main = hwnd
             break
     if main:
         time.sleep(1)
         rect = wintypes.RECT()
         user.GetWindowRect(main, ctypes.byref(rect))
-        ImageGrab.grab(bbox=(max(0,rect.left),max(0,rect.top),rect.right,rect.bottom)).save(base/'v39_exe_preview.png')
+        ImageGrab.grab(bbox=(max(0,rect.left),max(0,rect.top),rect.right,rect.bottom)).save(base/'v40_exe_preview.png')
         break
     time.sleep(.1)
 if not main:
-    ImageGrab.grab().save(base/'v39_exe_failure.png')
+    ImageGrab.grab().save(base/'v40_exe_failure.png')
     raise RuntimeError(f'exe did not reach main window: code={process.poll()}, windows={windows}')
 mascot_found = False
 deadline = time.monotonic() + 12

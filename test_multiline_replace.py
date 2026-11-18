@@ -2,8 +2,8 @@ import tkinter as tk
 from types import SimpleNamespace, MethodType
 from unittest.mock import patch
 import sys
-sys.path.insert(0,'開発用/v39')
-import nc_program_check_tool_v39 as m
+sys.path.insert(0,'開発用/v40')
+import nc_program_check_tool_v40 as m
 root=tk.Tk();root.withdraw()
 t=tk.Text(root,undo=True)
 d=SimpleNamespace(target=t,app=SimpleNamespace(_update_linenumbers=lambda:None,_highlight_all=lambda:None),

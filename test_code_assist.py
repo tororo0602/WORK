@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import tkinter as tk
 from unittest.mock import patch
-import nc_program_check_tool_v39 as m
+import nc_program_check_tool_v40 as m
 
 root = tk.Tk()
 root.geometry('1420x860+0+0')

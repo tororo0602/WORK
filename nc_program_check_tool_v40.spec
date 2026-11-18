@@ -1,15 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# NCプログラム確認ツール v39 ビルド設定
+# NCプログラム確認ツール v40 ビルド設定
 # 等価な従来コマンド:
-#   python -m PyInstaller --onedir --noupx --noconsole nc_program_check_tool_v39.py
+#   python -m PyInstaller --onedir --noupx --noconsole nc_program_check_tool_v40.py
 # + スプラッシュ画像対応
 #
 # ビルド方法:
-#   python -m PyInstaller nc_program_check_tool_v39.spec
+#   python -m PyInstaller nc_program_check_tool_v40.spec
 #
 # 必要ファイル（同じフォルダに置くこと）:
-#   - nc_program_check_tool_v39.py と import している各モジュール
+#   - nc_program_check_tool_v40.py と import している各モジュール
 #   - splash_start.png, wooln-wireframe-splash.png, mascot.webp
 # 任意: gm_glossary.json / nc_macros.json / macros/ があれば同梱する。
 #       無ければアプリ初回起動時にシードから自動生成される。
@@ -18,7 +18,7 @@ from pathlib import Path
 from shutil import copy2, copytree
 
 a = Analysis(
-    ['nc_program_check_tool_v39.py'],
+    ['nc_program_check_tool_v40.py'],
     pathex=[],
     binaries=[],
     datas=[('wooln-wireframe-splash.png', '.'), ('mascot.webp', '.')],
@@ -50,7 +50,7 @@ exe = EXE(
     splash,                  # スプラッシュをexeに含める
     [],
     exclude_binaries=True,   # --onedir 用（バイナリは COLLECT で同梱）
-    name='nc_program_check_tool_v39',
+    name='nc_program_check_tool_v40',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -72,12 +72,12 @@ coll = COLLECT(
     strip=False,
     upx=False,               # --noupx
     upx_exclude=[],
-    name='nc_program_check_tool_v39',
+    name='nc_program_check_tool_v40',
 )
 
 # 編集可能な設定はアプリが読み書きするexeと同じ階層へ配置する。
 source_dir = Path(SPECPATH)
-app_dir = Path(DISTPATH) / 'nc_program_check_tool_v39'
+app_dir = Path(DISTPATH) / 'nc_program_check_tool_v40'
 for filename in ('gm_glossary.json', 'nc_macros.json'):
     if (source_dir / filename).is_file():
         copy2(source_dir / filename, app_dir / filename)

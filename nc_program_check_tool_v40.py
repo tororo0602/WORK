@@ -9,11 +9,11 @@ import re
 import sys
 import uuid
 import tkinter as tk
-from ui_finish_v39 import round_native, GradientHeader, SmoothButton
+from ui_finish_v40 import round_native, GradientHeader, SmoothButton
 from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
 from bisect import bisect_right
-from input_syntax_v39 import check_input_syntax
+from input_syntax_v40 import check_input_syntax
 from dataclasses import dataclass, field
 from datetime import datetime
 from tkinter import filedialog, messagebox, ttk
@@ -25,7 +25,7 @@ try:
 except ImportError:
     HAS_OPENPYXL = False
 
-APP_TITLE = "NCプログラム確認ツール v39" + ("" if getattr(sys, "frozen", False) else "（Python確認版）")
+APP_TITLE = "NCプログラム確認ツール v40" + ("" if getattr(sys, "frozen", False) else "（Python確認版）")
 WINDOW_SIZE = "1420x860"
 READ_ENCODINGS = ["utf-8-sig", "utf-8", "cp932", "shift_jis", "latin-1"]
 MODE_TURNING = "ターニング"

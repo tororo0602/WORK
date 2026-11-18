@@ -5,7 +5,7 @@ import math
 import re
 import tkinter as tk
 from tkinter import font as tkfont, ttk
-from ui_finish_v39 import GradientHeader, SmoothButton, round_native
+from ui_finish_v40 import GradientHeader, SmoothButton, round_native
 
 
 class ReplacementPreview(tk.Toplevel):
