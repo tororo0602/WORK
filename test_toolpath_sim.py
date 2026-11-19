@@ -40,7 +40,7 @@ M1
 # ---- 極座標補間: X は直径値、I は半径値、C は mm ----
 r = t.simulate_block(rows(POLAR), "MILL")
 assert r.space == t.SPACE_POLAR
-assert r.c_index and any("C軸割り出し" in msg for _, msg in r.notices)
+assert r.c_index and not any("C軸割り出し" in msg for _, msg in r.notices)   # 極座標の図では割り出しの注意は出さない
 assert r.dropped == 1                                  # G113 の後の G0 は省略
 assert end(r.segments[0]) == (32.08, 0.0, 1.0)        # G112 直後の C 未確定区間は描かない（Z1. から）
 arc = next(s for s in r.segments if s.line_no == 16)
@@ -224,9 +224,12 @@ v._press(type("E", (), {"x": int(mx), "y": int(my)}))
 v._release(type("E", (), {"x": int(mx), "y": int(my)}))
 assert jumps and jumps[-1] == win.result.segments[5].line_no, jumps
 
+win.rewind()
+assert win.progress_var.get() == 0
 win.set_block("N1", rows(TURN), "TURN")
 root.update()
 assert len(win.views) == 1 and win.result.space == t.SPACE_TURN
+assert win.progress_var.get() == 1000.0          # ブロックを切り替えたらスライダーも最後に戻る
 win.set_block("N3", rows(CIDX), "MILL")
 root.update()
 assert len(win.views) == 2 and win.views[1].ia == 3      # 2画面目は機械座標の X–Z

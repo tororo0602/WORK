@@ -206,6 +206,7 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "", spindle: int = 1
     notices: list[tuple[int, str]] = []
     seen_notice: set[tuple[int, str]] = set()
     c_index = False
+    c_index_line = 0
 
     def note(line_no: int, msg: str) -> None:
         key = (line_no, msg)
@@ -348,7 +349,7 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "", spindle: int = 1
             target["C"] = c_val
             if not polar and c_val not in (None, 0.0):
                 if not c_index:
-                    note(line_no, "C軸割り出しをワーク基準で描画（C+ の回転方向は仮決め）")
+                    c_index_line = line_no
                 c_index = True
 
         new_cycle = next((int(g) for g in gcodes if 81 <= g <= 89), None)
@@ -409,6 +410,8 @@ def simulate_block(rows: list[tuple[int, str]], mode: str = "", spindle: int = 1
     kept = [seg for space, seg in segments if space == shown]
     dropped = len(segments) - len(kept)
     if shown == SPACE_MILL and c_index:
+        # 注意書きは割り出しの図で描くときだけ（G112 のブロックでは使わないので出さない）
+        notices.insert(0, (c_index_line, "C軸割り出しをワーク基準で描画（C+ の回転方向は仮決め）"))
         shown = SPACE_MILL_C
         sign = C_SIGN * (-1.0 if spindle == 2 else 1.0)
         for seg in kept:
@@ -708,6 +711,7 @@ class ToolpathPanel(tk.Frame):
         self.t = self._total
         self._done = len(res.segments)
         self._hl_line = None
+        self._sync_progress()            # 進み具合スライダーも「最後まで表示」に戻す
         self.update_idletasks()
         self.fit()
 
