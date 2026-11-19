@@ -594,9 +594,11 @@ class ToolpathPanel(tk.Frame):
     PLAY_SECONDS = 20.0     # 1倍速でブロック全体を再生する時間
     TICK_MS = 30
 
-    def __init__(self, master, on_jump, on_follow, on_close=None, button_factory=None):
+    def __init__(self, master, on_jump, on_follow, on_close=None, button_factory=None, on_block_nav=None):
+        """on_block_nav(-1 / +1): 前／次の N 番号へ移動（あれば「◀ 前のN」「次のN ▶」を出す）"""
         super().__init__(master, bg=PANEL)
         self.on_jump, self.on_follow, self.on_close = on_jump, on_follow, on_close
+        self.on_block_nav = on_block_nav
         self._button = button_factory or (lambda parent, text, cmd: tk.Button(parent, text=text, command=cmd))
         self._key = None
         self.result: SimResult | None = None
@@ -639,6 +641,9 @@ class ToolpathPanel(tk.Frame):
         self.play_button = self._button(ctrl, "▶ 再生", self.toggle_play)
         self.play_button.pack(side="left", padx=6)
         self._button(ctrl, "1行 ▶", lambda: self.step_line(1)).pack(side="left")
+        if on_block_nav is not None:
+            self._button(ctrl, "◀ 前のN", lambda: self._nav(-1)).pack(side="left", padx=(14, 0))
+            self._button(ctrl, "次のN ▶", lambda: self._nav(1)).pack(side="left", padx=(6, 0))
         tk.Label(ctrl, text="速度", bg=PANEL, fg=MUTED, font=("Yu Gothic UI", 9)).pack(side="left", padx=(14, 4))
         self.speed_var = tk.DoubleVar(value=33.0)
         self.speed_label = tk.Label(ctrl, text="", width=6, bg=PANEL, fg=TEXT, font=("Consolas", 10))
@@ -900,6 +905,10 @@ class ToolpathPanel(tk.Frame):
         if abs(t - self.t) > 1e-12:
             self.t = t
             self._redraw_dynamic()
+
+    def _nav(self, direction: int):
+        self.stop()
+        self.on_block_nav(direction)
 
     def _pick(self, index: int):
         if self.result is not None and 0 <= index < len(self.result.segments):

@@ -791,8 +791,24 @@ def find_g361_line(block_rows: list[tuple[int, str]]) -> int | None:
     return None
 
 
-# 補正コメント自動挿入の書式: (H30) / (H30 H39)
-OFFSET_COMMENT_RE = re.compile(r"^\(H\d+(?: H\d+)*\)$", flags=re.IGNORECASE)
+# 補正コメント自動挿入の書式: (H30) / (H30 H39) / 径補正を使っていれば (H30)(G41) / (H30)(G41/G42)
+OFFSET_COMMENT_RE = re.compile(r"^\(H\d+(?: H\d+)*\)(?:\(G4[12](?:/G4[12])?\))?$", flags=re.IGNORECASE)
+
+
+def block_radius_comp_codes(block_rows: list[tuple[int, str]]) -> list[str]:
+    """ブロック内で使っている径補正コード（"G41" / "G42"）。コメント・G65 行は無視。"""
+    used: set[str] = set()
+    for _, line in block_rows:
+        stripped = line.strip()
+        if not stripped or is_comment_line(stripped):
+            continue
+        check_target = strip_inline_comments(stripped)
+        if is_g65_line(check_target):
+            continue
+        compact = normalize_fragment(check_target).upper()
+        for match in re.finditer(r"G(4[12])(?!\d)", compact):
+            used.add("G" + match.group(1))
+    return sorted(used)
 
 
 def is_offset_comment_line(stripped: str) -> bool:
@@ -801,6 +817,7 @@ def is_offset_comment_line(stripped: str) -> bool:
 
 def plan_offset_comments(lines: list[str]) -> list[dict]:
     """G361 で工具交換する各 N ブロックに、G43 の H 補正を (H30) 形式で書く計画を返す。
+    径補正（G41/G42）を使っていれば後ろに (G41) / (G42) / (G41/G42) を付ける。
 
     挿入位置は工具名コメントの下（工具名コメントが無ければ N 行の下）。
     N 行直後のコメント群に既に (H..) 行があれば、内容が違う場合だけ書き換える。
@@ -819,6 +836,9 @@ def plan_offset_comments(lines: list[str]) -> list[dict]:
         if not h_nums:
             continue
         comment = "(" + " ".join(f"H{h:02d}" for h in h_nums) + ")"
+        radius = block_radius_comp_codes(block.rows)
+        if radius:
+            comment += "(" + "/".join(radius) + ")"
 
         n_line_no, n_line = block.rows[0]
         header: list[tuple[int, str]] = []
@@ -2019,7 +2039,8 @@ class NcCheckApp:
 
             self._toolpath_panel = ToolpathPanel(body, on_jump=self.jump_to_input_line,
                                                  on_follow=self._toolpath_follow_line,
-                                                 on_close=self._exit_toolpath_mode, button_factory=button)
+                                                 on_close=self._exit_toolpath_mode, button_factory=button,
+                                                 on_block_nav=self._jump_n_block)
             round_native(self._toolpath_panel, 8)
         for w in panes:
             if w is not self._input_panel:
@@ -2061,6 +2082,27 @@ class NcCheckApp:
                 body.sash_place(i, x, 0)
             except tk.TclError:
                 pass
+
+    def _jump_n_block(self, direction: int) -> None:
+        """カーソル位置から前（-1）／次（+1）の N 番号の行へ移動する"""
+        try:
+            cur_line = int(self.input_text.index(tk.INSERT).split(".")[0])
+            lines = self.input_text.get("1.0", "end-1c").splitlines()
+        except (tk.TclError, ValueError):
+            return
+        starts = [b.start_line_no for b in split_n_blocks(lines)]
+        if not starts:
+            self.status_var.set("N番号がありません。")
+            return
+        current = bisect_right(starts, cur_line) - 1        # カーソルを含むブロック（N より前なら -1）
+        target = current + direction
+        if target < 0:
+            self.status_var.set("先頭の N 番号です。")
+            return
+        if target >= len(starts):
+            self.status_var.set("最後の N 番号です。")
+            return
+        self.jump_to_input_line(starts[target], align_top=True)
 
     def _refresh_mascot_position(self) -> None:
         mascot = getattr(self, "_mascot", None)

@@ -90,6 +90,29 @@ for line, side in ((21, 2), (28, 2), (33, 1)):
     root.mainloop()
     assert app._toolpath_panel.result.spindle == side, (line, app._toolpath_panel._key[0])
 
+# 前のN / 次のN（軌跡パネルのボタン）
+def cur():
+    return int(app.input_text.index(tk.INSERT).split(".")[0])
+starts = [b.start_line_no for b in m.split_n_blocks(PROGRAM.splitlines())]
+app.jump_to_input_line(3)                     # N1 の中
+app._toolpath_panel._nav(1)
+assert cur() == starts[1]
+app._toolpath_panel._nav(1)
+assert cur() == starts[2]
+app._toolpath_panel._nav(-1)
+assert cur() == starts[1]
+app.jump_to_input_line(starts[1] + 2)         # N2 の途中から「前」→ N1 へ
+app._toolpath_panel._nav(-1)
+assert cur() == starts[0]
+app._toolpath_panel._nav(-1)                  # 先頭ではそのまま
+assert cur() == starts[0] and "先頭" in app.status_var.get()
+app.jump_to_input_line(starts[-1])
+app._toolpath_panel._nav(1)                   # 最後ではそのまま
+assert cur() == starts[-1] and "最後" in app.status_var.get()
+root.after(300, root.quit)
+root.mainloop()
+assert app._toolpath_panel._key[0] == "N5"    # 軌跡も追従
+
 # 閉じる（パネルの「閉じる」と同じ処理）
 app._toolpath_panel.on_close()
 root.update()
@@ -114,4 +137,4 @@ assert [str(p) for p in body.panes()] == before
 
 assert not errors, errors
 root.destroy()
-print("PASS: enter 30/70, auto redraw on cursor, pick jumps, close restores panes and widths, toggle")
+print("PASS: prev/next N, enter 30/70, auto redraw on cursor, pick jumps, close restores panes and widths, toggle")

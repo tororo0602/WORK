@@ -129,5 +129,54 @@ with patch.object(m.messagebox, "showwarning") as warn:
     captured["confirm"]({0}, False)
 assert warn.called and "(H39)" not in editor.get("1.0", "end-1c")
 
+# ---- 径補正を使っていれば (G41) / (G42) / (G41/G42) を付ける ----
+RADIUS = """\
+N7
+(END MILL D10)
+T2010
+G361B0.D0
+G43H10
+G41G1X20.D10
+G40G1X30.
+M1
+
+N8
+(END MILL D20)
+T2020
+G361B0.D0
+G43H20
+G43H110
+G42G1X20.
+G41G1X10.
+G40
+(G41 IN COMMENT IS IGNORED)
+M1
+
+N9
+(TURN)
+T2001
+G361B0.D0
+G43H01
+G65P9000G41.
+M1
+"""
+plans = {p["n_label"]: p for p in m.plan_offset_comments(RADIUS.split("\n"))}
+assert plans["N7"]["comment"] == "(H10)(G41)", plans["N7"]
+assert plans["N8"]["comment"] == "(H20 H110)(G41/G42)", plans["N8"]
+assert plans["N9"]["comment"] == "(H01)"                     # G65 行の G41 は数えない
+assert m.is_offset_comment_line("(H20 H110)(G41/G42)") and m.is_offset_comment_line("(H10)(G42)")
+assert not m.is_offset_comment_line("(H10)(G43)")
+# 前に書いた (H10) は、径補正ありなら (H10)(G41) に書き換える
+old = RADIUS.replace("(END MILL D10)\n", "(END MILL D10)\n(H10)\n")
+p7 = {p["n_label"]: p for p in m.plan_offset_comments(old.split("\n"))}["N7"]
+assert p7["action"] == "replace" and p7["old"] == "(H10)" and p7["new"] == "(H10)(G41)", p7
+# 書いた後は変更なし、工具名の読み取りも (H..)(G..) 行を飛ばす
+done = RADIUS.replace("(END MILL D10)\n", "(END MILL D10)\n(H10)(G41)\n")
+assert "N7" not in {p["n_label"] for p in m.plan_offset_comments(done.split("\n"))}
+blk = m.split_n_blocks(done.split("\n"))[0]
+assert m.extract_tool_name(blk.rows)[0] == "(END MILL D10)"
+blk = m.split_n_blocks("N1\n(H10)(G41)\n(DRILL)\n".split("\n"))[0]
+assert m.extract_tool_name(blk.rows)[0] == "(DRILL)"
+
 root.destroy()
-print("PASS: targets, position under tool name, multi H, N-line tool name, apply/partial, undo, rerun, replace stale, stale snapshot")
+print("PASS: radius comp marker (G41/G42), targets, position under tool name, multi H, N-line tool name, apply/partial, undo, rerun, replace stale, stale snapshot")
