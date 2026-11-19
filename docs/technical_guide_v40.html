@@ -14,7 +14,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
-  font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-family: "Yu Gothic UI", "Yu Gothic", "Meiryo", "Hiragino Sans", "Noto Sans JP", "IPAPGothic", "IPAGothic", sans-serif;
   font-size: 15px; line-height: 1.75;
 }
 .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
@@ -35,9 +35,9 @@ table { border-collapse: collapse; width: 100%; margin: 10px 0 16px; font-size: 
 th, td { border: 1px solid var(--line); padding: 6px 10px; vertical-align: top; text-align: left; }
 th { background: var(--soft); font-weight: 600; white-space: nowrap; }
 .tbl { overflow-x: auto; }
-code, kbd { font-family: Consolas, "BIZ UDGothic", monospace; font-size: .92em; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+code, kbd { font-family: Consolas, "DejaVu Sans Mono", "IPAGothic", monospace; font-size: .92em; background: var(--code); padding: 1px 5px; border-radius: 4px; }
 kbd { border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); }
-pre { background: #0b0f14; color: #dceaf4; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-family: Consolas, monospace; font-size: 13.5px; line-height: 1.55; }
+pre { background: #0b0f14; color: #dceaf4; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-family: Consolas, "DejaVu Sans Mono", "IPAGothic", monospace; font-size: 13.5px; line-height: 1.55; }
 pre code { background: none; padding: 0; color: inherit; }
 figure { margin: 14px 0 22px; }
 figure img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; display: block; }
@@ -63,12 +63,12 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
   header.doc h1 { font-size: 23px; }
   .flow .arrow { display: none; }
 }
+.keep { break-inside: avoid; }
 @media print {
-  body { font-size: 11pt; }
+  body { font-size: 10.5pt; }
   .wrap { max-width: none; padding: 0; }
-  nav.toc { break-after: page; }
-  h2 { break-before: page; }
-  figure, table, pre { break-inside: avoid; }
+  h2, h3, h4 { break-after: avoid; }
+  figure, pre, tr, .note, .tip, .warn, .flow { break-inside: avoid; }
   a { color: inherit; text-decoration: none; }
 }
 </style>
@@ -79,7 +79,7 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <nav class="toc"><strong>目次</strong><ol><li><a href="#arch">1. 全体の構成</a></li><li><a href="#th">2. T/H 補正不一致チェック</a></li><li><a href="#offset">3. 補正コメント</a></li><li><a href="#sim">4. 軌跡シミュレーター：G コードの解釈</a></li><li><a href="#panel">5. 軌跡シミュレーター：画面</a></li><li><a href="#const">6. 調整できる定数</a></li><li><a href="#ntx">7. NTX の前提と確認状況</a></li><li><a href="#dev">8. 開発するときの注意</a></li><li><a href="#tests">9. テスト</a></li></ol></nav>
 <p>この資料は、ツールを直したり機能を足したりする人向けです。使い方は「取扱説明書（manual_v40.html）」を見てください。関数名・定数名はソースコードの名前そのままです。</p>
 
-<h2 id="arch">1. 全体の構成</h2>
+<div class="keep"><h2 id="arch">1. 全体の構成</h2>
 <h3>ファイルの役割</h3>
 <div class="tbl"><table>
 <tr><th>ファイル</th><th>中身</th></tr>
@@ -91,9 +91,9 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <tr><td><code>splash_artwork.py</code> ／ <code>tool_mascot.py</code> ／ <code>mascot_base.py</code></td><td>起動画面とマスコット</td></tr>
 <tr><td><code>nc_program_check_tool_v40.spec</code></td><td>PyInstaller の exe ビルド設定</td></tr>
 <tr><td><code>test_*.py</code></td><td>テスト（<a href="#tests">9章</a>）</td></tr>
-</table></div>
+</table></div></div>
 
-<h3>チェックの流れ</h3>
+<div class="keep"><h3>チェックの流れ</h3>
 <div class="flow">
 <div class="box"><b>プログラム本文</b>エディタの全文を行に分ける</div><div class="arrow">→</div>
 <div class="box"><b>collect_program_findings</b>各種チェックを行い <code>Finding</code>（行番号・種類・文言）の一覧を作る</div><div class="arrow">→</div>
@@ -112,8 +112,8 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 </div>
 
 <h2 id="th">2. T/H 補正不一致チェック</h2>
-<p>関数：<code>detect_tool_offset_mismatch_findings(lines)</code>。<code>collect_program_findings</code> から呼ばれ、種類 <code>tool_offset_mismatch</code>（警告）の <code>Finding</code> を返します。</p>
-<h3>判定の手順（ブロックごと）</h3>
+<p>関数：<code>detect_tool_offset_mismatch_findings(lines)</code>。<code>collect_program_findings</code> から呼ばれ、種類 <code>tool_offset_mismatch</code>（警告）の <code>Finding</code> を返します。</p></div>
+<div class="keep"><h3>判定の手順（ブロックごと）</h3>
 <ol class="steps">
 <li><code>find_g361_line</code> で G361 の行を探す。無ければこのブロックは対象外。</li>
 <li><code>extract_t_before_g36x</code> で T 番号を取る。G361 と同じ行の T、無ければ G361 より前で一番近い T（G361 より後ろの T は次工具の準備なので使わない）。表示は先頭4桁（<code>T2005</code>）。</li>
@@ -121,15 +121,15 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <li>H が1つも無い → 「G43のH補正なし」（G361 の行に出す）。</li>
 <li>H38 以下の H が2種類以上 → 「H補正が複数」（2種類目が出た行に出す）。</li>
 <li>T の3〜4桁目（下2桁）を期待値として、H38 以下で期待値と違う H → 「T/H補正不一致」（その G43 の行に出す）。</li>
-</ol>
+</ol></div>
 <div class="tbl"><table>
 <tr><th>定数</th><th>値</th><th>意味</th></tr>
 <tr><td><code>PERMANENT_TOOL_H_MIN</code></td><td>39</td><td>これ以上の H はパーマネント工具。不一致・複数どちらの判定からも外す</td></tr>
 </table></div>
 <p>正規表現のポイント：G43 の判定は <code>G43(?!\d)</code>（G430 などと区別、G43.4 は通る）。H は <code>H(\d+)</code> を数値にして比べるので <code>H05</code> と <code>H5</code> は同じ扱いです。</p>
 
-<h3>新しい検出の種類を足すとき触る場所</h3>
-<p>T/H 補正不一致を足したときに触った場所です。種類を増やすときは同じところを全部触ってください。</p>
+<div class="keep"><h3>新しい検出の種類を足すとき触る場所</h3>
+<p>T/H 補正不一致を足したときに触った場所です。種類を増やすときは同じところを全部触ってください。</p></div>
 <div class="tbl"><table>
 <tr><th>場所</th><th>内容</th></tr>
 <tr><td><code>RESULT_STYLE_MAP</code></td><td><code>summary_種類</code> と <code>finding_種類</code> の色</td></tr>
@@ -141,34 +141,34 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <tr><td><code>generate_first_article_excel</code></td><td>Excel の件数集計と、種類名・文字色・背景色の対応表（<code>kl_map</code>／<code>kc_map</code>／背景色の辞書）</td></tr>
 </table></div>
 
-<h2 id="offset">3. 補正コメント</h2>
-<p>計画：<code>plan_offset_comments(lines)</code>（画面に依存しない純粋な関数）。画面：<code>NcCheckApp._open_offset_comment_preview</code>。</p>
-<h3>書く内容</h3>
+<div class="keep"><h2 id="offset">3. 補正コメント</h2>
+<p>計画：<code>plan_offset_comments(lines)</code>（画面に依存しない純粋な関数）。画面：<code>NcCheckApp._open_offset_comment_preview</code>。</p></div>
+<div class="keep"><h3>書く内容</h3>
 <ul>
 <li>対象は G361 があり、<code>extract_g43_h_list</code> で H が取れるブロック。</li>
 <li>H は出た順に重複を除いて <code>H{番号:02d}</code> で並べる → <code>(H10 H110)</code>。パーマネントの H も書く。</li>
 <li><code>block_radius_comp_codes</code> で G41／G42 の使用を調べ（コメント・G65 行は除外）、あれば <code>(G41)</code>／<code>(G42)</code>／<code>(G41/G42)</code> を後ろに付ける。</li>
-</ul>
-<h3>書く場所</h3>
+</ul></div>
+<div class="keep"><h3>書く場所</h3>
 <ol class="steps">
 <li>N 行の次から、空行かコメント行が続く範囲を「見出し部」とする。</li>
 <li>見出し部に既に自動コメントの行（<code>OFFSET_COMMENT_RE</code> に一致）があれば、内容が違うときだけ <b>置き換え</b>（<code>action="replace"</code>）。同じなら何もしない。</li>
 <li>無ければ <b>挿入</b>（<code>action="insert"</code>）。挿入位置は、N 行にコメントがあれば N 行の後ろ、無ければ見出し部の最初のコメント行（工具名）の後ろ、それも無ければ N 行の後ろ。</li>
-</ol>
+</ol></div>
 <pre><code>OFFSET_COMMENT_RE = ^\(H\d+(?: H\d+)*\)(?:\(G4[12](?:/G4[12])?\))?$</code></pre>
 <p><code>extract_tool_name</code> はこの書式の行を飛ばすので、自動コメントが工具名として表示されることはありません。</p>
-<h3>反映</h3>
+<div class="keep"><h3>反映</h3>
 <ul>
 <li>確認画面は <code>ReplacementPreview(..., grouped=True)</code>。行ごとのチェックで選べる。</li>
 <li>確定時、プレビューを開いた時点の全文（<code>snapshot</code>）と今の全文が違えば反映せず、もう一度押すよう案内する（途中で編集されたときの事故防止）。</li>
 <li>行番号の大きい方から順に挿入・置換し、前後に <code>edit_separator()</code> を入れて <b>Undo 1回</b>で戻るようにしている。</li>
 <li>反映後は行番号・色分けを更新し、<code>_auto_rerun_check</code> で再チェック。</li>
-</ul>
+</ul></div>
 
-<h2 id="sim">4. 軌跡シミュレーター：G コードの解釈</h2>
-<p>関数：<code>simulate_block(rows, mode="", spindle=1)</code>。<code>mode</code> は <code>detect_n_index_mode</code> の結果（<code>"TURN"</code>／<code>"MILL"</code>）、<code>spindle</code> は <code>spindle_of_block</code> の結果（1／2）です。戻り値は <code>SimResult</code>（表示空間、<code>Segment</code> の一覧、注意書き、省略した本数、C 割り出しの有無、主軸側）。</p>
+<div class="keep"><h2 id="sim">4. 軌跡シミュレーター：G コードの解釈</h2>
+<p>関数：<code>simulate_block(rows, mode="", spindle=1)</code>。<code>mode</code> は <code>detect_n_index_mode</code> の結果（<code>"TURN"</code>／<code>"MILL"</code>）、<code>spindle</code> は <code>spindle_of_block</code> の結果（1／2）です。戻り値は <code>SimResult</code>（表示空間、<code>Segment</code> の一覧、注意書き、省略した本数、C 割り出しの有無、主軸側）。</p></div>
 
-<h3>モーダル状態</h3>
+<div class="keep"><h3>モーダル状態</h3>
 <div class="tbl"><table>
 <tr><th>状態</th><th>指令</th><th>初期値</th></tr>
 <tr><td>位置 X(直径)・Y・Z・C</td><td>X／Y／Z／C（絶対）、U／V／W／H（インクリメンタル）</td><td>Y=0、他は「不明」</td></tr>
@@ -179,10 +179,10 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <tr><td>送り</td><td>F、G98（毎分）／G99（毎回転）</td><td>旋削は毎回転</td></tr>
 <tr><td>回転数</td><td>S、G96（周速一定）／G97、G50 S（回転数上限）</td><td>—</td></tr>
 <tr><td>固定サイクル</td><td>G81〜G89 開始、G80 または G0〜G3 で解除</td><td>なし</td></tr>
-</table></div>
+</table></div></div>
 <p><b>位置が「不明」の間は線を描きません</b>。ブロックの最初、G28／G30／G53 で指定された軸、G361／G362（工具交換）、G112／G113 の C が「不明」になります。両端の位置が分かる移動だけを <code>Segment</code> にします。</p>
 
-<h3>読み飛ばす行と注意書き</h3>
+<div class="keep"><h3>読み飛ばす行と注意書き</h3>
 <div class="tbl"><table>
 <tr><th>行</th><th>扱い</th></tr>
 <tr><td><code>#</code>、<code>[</code>、IF／GOTO／WHILE／DO／END</td><td>「変数・マクロ文は描画しません」</td></tr>
@@ -192,20 +192,20 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <tr><td>G4（ドウェル）、G10、G11</td><td>無視（G4 の X は時間なので座標として読まない）</td></tr>
 <tr><td>G50 に X／Z</td><td>座標系設定は反映せず、X・Z を「不明」に</td></tr>
 <tr><td>G43／G43.4／G49 の行の H</td><td>補正番号として扱う（それ以外の H は C のインクリメンタル）</td></tr>
-</table></div>
+</table></div></div>
 
-<h3>表示空間（点の持ち方）</h3>
+<div class="keep"><h3>表示空間（点の持ち方）</h3>
 <div class="tbl"><table>
 <tr><th>空間</th><th>点</th><th>図</th></tr>
 <tr><td><code>SPACE_TURN</code>（旋削）</td><td>(Z, X/2, Y)</td><td>Z–X</td></tr>
 <tr><td><code>SPACE_MILL</code>（ミーリング）</td><td>(X/2, Y, Z)</td><td>X–Y、X–Z</td></tr>
 <tr><td><code>SPACE_POLAR</code>（G112）</td><td>(X/2, C, Z)　C は mm</td><td>X–C、X–Z</td></tr>
 <tr><td><code>SPACE_MILL_C</code>（C 割り出し）</td><td>(ワークX, ワークY, Z, 機械X/2)</td><td>端面（0,1）、機械 X–Z（3,2）</td></tr>
-</table></div>
+</table></div></div>
 <p>X は常に直径値なので、点にするときに半分にします。ブロック内に G112 の区間があれば極座標の空間で表示し、G112 の外の移動は省略して「G112 の外の移動 N 本は省略」と出します。</p>
 
-<h3>円弧</h3>
-<p>平面ごとの軸と中心のワード（<code>_arc_plane</code>）：旋削は (Z, X) と (K, I)、G17 は (X, Y) と (I, J)、G18 は (Z, X) と (K, I)、G19 は (Y, Z) と (J, K)、極座標は (X, C) と (I, J)。<b>I は半径値</b>です（極座標の円弧で、始点・終点から中心までの距離が両方 29.9 になることで確認済み）。</p>
+<div class="keep"><h3>円弧</h3>
+<p>平面ごとの軸と中心のワード（<code>_arc_plane</code>）：旋削は (Z, X) と (K, I)、G17 は (X, Y) と (I, J)、G18 は (Z, X) と (K, I)、G19 は (Y, Z) と (J, K)、極座標は (X, C) と (I, J)。<b>I は半径値</b>です（極座標の円弧で、始点・終点から中心までの距離が両方 29.9 になることで確認済み）。</p></div>
 <ul>
 <li><b>I/J/K 指定</b>：中心 = 始点 + (I, J, K)。始点と終点が同じなら一周。</li>
 <li><b>R 指定</b>（<code>_r_center</code>）：弦の長さを d として h = √(R² − (d/2)²)。中心 = 弦の中点 ± h ×（進行方向の左向き単位ベクトル）。反時計回り（G3）で R&gt;0 なら＋、時計回り（G2）なら −、R&lt;0（大円弧）は符号を反転。</li>
@@ -213,16 +213,16 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <li>描画用に 2°ごと（<code>ARC_STEP_RAD</code>）に分割。始点・終点は計算誤差が出ないよう元の座標をそのまま使う。</li>
 </ul>
 
-<h3>穴あけ固定サイクル（G81〜G89）</h3>
+<div class="keep"><h3>穴あけ固定サイクル（G81〜G89）</h3>
 <ul>
 <li>穴の方向：G81〜G86 は Z、G87〜G89 は X（側面）。</li>
 <li>穴底：サイクル行の Z（または X）。以降の行で X／Y／C だけ指令されたら、同じ穴底で次の穴。</li>
 <li>R 点 = 初期点 + R（X 方向は直径なので R×2）。<span class="tag tmp">仮決め</span></li>
 <li>描き方：(1) 穴位置へ早送り → (2) R 点へ早送り → (3) 穴底へ切削 → (4) 初期点へ早送り。ペックの往復は描かない。</li>
-</ul>
+</ul></div>
 
-<h3>C 軸割り出し</h3>
-<p>極座標補間の外で、0 以外の C が指令されたブロックは「C 割り出しあり」とし、ミーリングの点をワーク基準に回します（<code>_rotate_by_c</code>）。</p>
+<div class="keep"><h3>C 軸割り出し</h3>
+<p>極座標補間の外で、0 以外の C が指令されたブロックは「C 割り出しあり」とし、ミーリングの点をワーク基準に回します（<code>_rotate_by_c</code>）。</p></div>
 <pre><code>θ = −radians(sign × C)          sign = C_SIGN（第二主軸なら −C_SIGN）
 ワークX = x·cosθ − y·sinθ
 ワークY = x·sinθ + y·cosθ       （x = 機械X/2, y = 機械Y）</code></pre>
@@ -232,8 +232,8 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <li>注意書き「C軸割り出しをワーク基準で描画」は、この図で描いたときだけ出す（G112 前の割り出しには出さない）。</li>
 </ul>
 
-<h3>第二主軸</h3>
-<p><code>spindle_of_block(rows, previous)</code>：<code>M304</code>／<code>M203</code>／<code>M204</code>／<code>M245</code> があれば 2、<code>M303</code> があれば 1。ブロック内に両方あれば後に出た方。どれも無ければ <code>previous</code>（前のブロック）を引き継ぐ。本体の <code>_update_toolpath_now</code> は先頭のブロックから順にこの判定をつないでいきます。<span class="tag tmp">引き継ぎは仮決め</span></p>
+<div class="keep"><h3>第二主軸</h3>
+<p><code>spindle_of_block(rows, previous)</code>：<code>M304</code>／<code>M203</code>／<code>M204</code>／<code>M245</code> があれば 2、<code>M303</code> があれば 1。ブロック内に両方あれば後に出た方。どれも無ければ <code>previous</code>（前のブロック）を引き継ぐ。本体の <code>_update_toolpath_now</code> は先頭のブロックから順にこの判定をつないでいきます。<span class="tag tmp">引き継ぎは仮決め</span></p></div>
 <p>表示の反転は <code>view_flips(space, 図の番号, spindle)</code> が返す（横, 縦）の符号で行い、点の値そのものは変えません。</p>
 <div class="tbl"><table>
 <tr><th>図</th><th>第二主軸での反転</th></tr>
@@ -242,7 +242,7 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
 <tr><td>X–Z（ミーリング・極座標・機械座標）</td><td>縦（Z）を反転</td></tr>
 </table></div>
 
-<h3>再生の時間配分</h3>
+<div class="keep"><h3>再生の時間配分</h3>
 <pre><code>重み（相対時間） = 移動の長さ ÷ 速さ
   早送り：速さ = RAPID_MM_MIN（20000、見た目用）
   毎分送り：速さ = F
@@ -250,19 +250,19 @@ footer { margin-top: 60px; color: var(--muted); font-size: 12px; border-top: 1px
     回転数 = G97 なら S
            = G96 なら min(S×1000 ÷ (π×直径), G50 の上限)   直径は今の X（不明なら 50、最小 1）
   F が無いときは DEFAULT_FEED_MM_MIN（1000）
-C が回る移動の長さ = √(直線の長さ² + (半径×回転角)²)</code></pre>
+C が回る移動の長さ = √(直線の長さ² + (半径×回転角)²)</code></pre></div>
 <p>重みの合計を、1倍速で <code>PLAY_SECONDS</code>（20秒）になるように割り付けます。</p>
 
-<h2 id="panel">5. 軌跡シミュレーター：画面</h2>
+<div class="keep"><h2 id="panel">5. 軌跡シミュレーター：画面</h2>
 <h3>画面の切り替え</h3>
-<p>メイン画面の横並びは <code>tk.PanedWindow</code>（<code>self._main_panes</code>）です。</p>
+<p>メイン画面の横並びは <code>tk.PanedWindow</code>（<code>self._main_panes</code>）です。</p></div>
 <ul>
 <li><code>_enter_toolpath_mode</code>：各ペインの <code>minsize</code>／<code>stretch</code> と<b>実際の幅</b>、境目（sash）の位置を保存 → NC プログラム以外のペインを <code>forget</code> → <code>ToolpathPanel</code> を <code>add</code> → 境目を全体幅 × <code>TOOLPATH_PROGRAM_RATIO</code>（0.30）に置く。</li>
 <li><code>_exit_toolpath_mode</code>：再生を止めて軌跡パネルを外し、保存した順番・幅で4ペインを足し直す。境目は <code>_restore_sashes</code> でその場と画面更新後の2回置き直す（PanedWindow が後から幅を詰め直すため）。</li>
 <li>ツールバーの「軌跡」は <code>_toggle_toolpath_mode</code>。パネルの「✕ 閉じる」は <code>on_close</code> で <code>_exit_toolpath_mode</code> を呼ぶ。</li>
 <li>マスコットはブロック情報パネルに付いているので、切り替え後に <code>_refresh_mascot_position</code> で位置を再計算（パネルが見えなければ自動で隠れる）。</li>
 </ul>
-<h3>ToolpathPanel</h3>
+<div class="keep"><h3>ToolpathPanel</h3>
 <div class="tbl"><table>
 <tr><th>メソッド</th><th>働き</th></tr>
 <tr><td><code>set_block(label, rows, mode, spindle)</code></td><td>(ラベル, 行, モード, 主軸側) が前回と同じなら何もしない。違えば解析して図を作り直し、再生位置とスライダーを最後にする</td></tr>
@@ -273,20 +273,20 @@ C が回る移動の長さ = √(直線の長さ² + (半径×回転角)²)</cod
 <tr><td><code>_nav(±1)</code></td><td>再生を止めて <code>on_block_nav</code>（本体の <code>_jump_n_block</code>）を呼ぶ</td></tr>
 <tr><td><code>_pick(番号)</code></td><td>クリックした移動の行へ <code>on_jump</code>（本体の <code>jump_to_input_line</code>）</td></tr>
 <tr><td><code>_redraw_dynamic</code></td><td>工具位置の丸、途中までの線、通過済みの色、状態表示、エディタ追従を更新</td></tr>
-</table></div>
-<h3>PathView（1つの図）</h3>
+</table></div></div>
+<div class="keep"><h3>PathView（1つの図）</h3>
 <pre><code>画面X = ox + s × fa × 点[ia]
-画面Y = oy − s × fb × 点[ib]      fa, fb = view_flips の符号</code></pre>
+画面Y = oy − s × fb × 点[ib]      fa, fb = view_flips の符号</code></pre></div>
 <ul>
 <li>全体表示：点の範囲が画面の 85% に収まる <code>s</code> と、中央に来る <code>ox</code>／<code>oy</code> を計算。縦横の縮尺は同じ。</li>
 <li>ズーム・移動：Canvas の <code>scale</code>／<code>move</code> を "world" タグにかけ、<code>s</code>・<code>ox</code>・<code>oy</code> も同じだけ変える（図を作り直さないので大きなブロックでも速い）。</li>
 <li>色の切り替え：通過済みかどうかで色を変える。変わった範囲だけ塗り直す（<code>_set_done</code>）。</li>
 <li>大きさの目安：移動2万本のブロックで、作図約0.6秒、再生1コマ約7ms（Linux での計測）。</li>
 </ul>
-<h3>前の N／次の N</h3>
-<p><code>_jump_n_block(±1)</code>：全ブロックの開始行の一覧から、カーソルを含むブロックを二分探索で求め、前後のブロックの開始行へ <code>jump_to_input_line(行, align_top=True)</code>。範囲外ならステータスバーに「先頭の N 番号です」「最後の N 番号です」。</p>
+<div class="keep"><h3>前の N／次の N</h3>
+<p><code>_jump_n_block(±1)</code>：全ブロックの開始行の一覧から、カーソルを含むブロックを二分探索で求め、前後のブロックの開始行へ <code>jump_to_input_line(行, align_top=True)</code>。範囲外ならステータスバーに「先頭の N 番号です」「最後の N 番号です」。</p></div>
 
-<h2 id="const">6. 調整できる定数</h2>
+<div class="keep"><h2 id="const">6. 調整できる定数</h2>
 <div class="tbl"><table>
 <tr><th>ファイル</th><th>定数</th><th>値</th><th>意味</th></tr>
 <tr><td>本体</td><td><code>PERMANENT_TOOL_H_MIN</code></td><td>39</td><td>パーマネント工具とみなす H の下限</td></tr>
@@ -297,9 +297,9 @@ C が回る移動の長さ = √(直線の長さ² + (半径×回転角)²)</cod
 <tr><td>toolpath_sim</td><td><code>DEFAULT_FEED_MM_MIN</code></td><td>1000</td><td>F が無いときの送り</td></tr>
 <tr><td>toolpath_sim</td><td><code>ARC_STEP_RAD</code></td><td>2°</td><td>円弧の分割</td></tr>
 <tr><td>toolpath_sim</td><td><code>PLAY_SECONDS</code></td><td>20</td><td>1倍速の再生時間</td></tr>
-</table></div>
+</table></div></div>
 
-<h2 id="ntx">7. NTX の前提と確認状況</h2>
+<div class="keep"><h2 id="ntx">7. NTX の前提と確認状況</h2>
 <div class="tbl"><table>
 <tr><th>前提</th><th>状況</th><th>根拠・直す場所</th></tr>
 <tr><td>X は全モードで直径値</td><td>確定</td><td>G112 前後で X が同じ値のまま（利用者確認済み）</td></tr>
@@ -312,9 +312,9 @@ C が回る移動の長さ = √(直線の長さ² + (半径×回転角)²)</cod
 <tr><td>旋削の G2 は Z右・X上で時計回り</td><td><span class="tag tmp">仮</span></td><td><code>arc_points</code> ／ <code>_r_center</code></td></tr>
 <tr><td>主軸選択はブロックをまたいで引き継ぐ</td><td><span class="tag tmp">仮</span></td><td><code>spindle_of_block</code></td></tr>
 <tr><td>径補正コメントは使ったコードだけ書く</td><td><span class="tag tmp">仮</span></td><td><code>plan_offset_comments</code></td></tr>
-</table></div>
+</table></div></div>
 
-<h2 id="dev">8. 開発するときの注意</h2>
+<div class="keep"><h2 id="dev">8. 開発するときの注意</h2>
 <ul>
 <li><b>改行コード</b>：本体は CRLF と LF が混在（LF だけの行が27行）。全体を保存し直すと全行が差分になるので、変更行だけ触ること。</li>
 <li><b>Windows 専用の部分</b>：最大化（<code>state("zoomed")</code>）とマスコットの透過色（<code>-transparentcolor</code>）は Linux の Tk では動かない。Linux でテストするときは回避が要る（<code>test_toolpath_layout.py</code> 参照）。</li>
@@ -322,10 +322,10 @@ C が回る移動の長さ = √(直線の長さ² + (半径×回転角)²)</cod
 <li><b>版数付きのファイル名</b>：版を上げるたびに <code>_v40</code> などの名前を変える運用。並行作業ではリネームが衝突しやすい。</li>
 <li><b>新機能は別モジュールに</b>：<code>toolpath_sim.py</code> のように本体から呼ぶだけにすると、本体（約1万行）を触る範囲が小さくて済む。</li>
 <li><b>exe</b>：会社の PC では exe がセキュリティで止められたため、Python のソースで運用中。</li>
-</ul>
+</ul></div>
 
-<h2 id="tests">9. テスト</h2>
-<p>どれも単体で実行でき、最後に <code>PASS: ...</code> と出れば成功です。</p>
+<div class="keep"><h2 id="tests">9. テスト</h2>
+<p>どれも単体で実行でき、最後に <code>PASS: ...</code> と出れば成功です。</p></div>
 <pre><code>python test_toolpath_sim.py</code></pre>
 <div class="tbl"><table>
 <tr><th>ファイル</th><th>見ている内容</th></tr>
